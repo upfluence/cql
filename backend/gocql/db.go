@@ -33,7 +33,7 @@ func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query)) {
 func (db *DB) query(ctx context.Context, stmt string, vs []interface{}) *gocql.Query {
 	var (
 		vvs, fns = trimValues(vs)
-		q        = db.sess.Query(stmt, vvs).WithContext(ctx)
+		q        = db.sess.Query(stmt, vvs...).WithContext(ctx)
 	)
 
 	for _, fn := range fns {
