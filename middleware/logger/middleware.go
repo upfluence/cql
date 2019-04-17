@@ -70,7 +70,7 @@ type factory struct {
 }
 
 func (f *factory) Wrap(db cql.DB) cql.DB {
-	return &DB{db: db}
+	return &DB{db: db, l: f.l}
 }
 
 type DB struct {
