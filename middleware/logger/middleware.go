@@ -227,7 +227,7 @@ type batch struct {
 func (b *batch) Query(stmt string, vs ...interface{}) {
 	atomic.AddUint32(&b.queries, 1)
 
-	b.Batch.Query(stmt, vs)
+	b.Batch.Query(stmt, vs...)
 }
 
 func (b *batch) Exec() error {
