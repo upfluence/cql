@@ -110,7 +110,7 @@ type casScanner struct {
 }
 
 func (csc casScanner) ScanCAS(vs ...interface{}) (bool, error) {
-	ok, err := csc.CASScanner.ScanCAS(vs)
+	ok, err := csc.CASScanner.ScanCAS(vs...)
 
 	vvs, fs := trimValues(csc.vs)
 
@@ -144,7 +144,7 @@ type scanner struct {
 }
 
 func (sc scanner) Scan(vs ...interface{}) error {
-	err := sc.Scanner.Scan(vs)
+	err := sc.Scanner.Scan(vs...)
 
 	vvs, fs := trimValues(sc.vs)
 
