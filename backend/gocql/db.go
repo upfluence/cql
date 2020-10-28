@@ -30,6 +30,8 @@ func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query)) {
 	return res, nil
 }
 
+func (db *DB) Session() *gocql.Session { return db.sess }
+
 func (db *DB) query(ctx context.Context, stmt string, vs []interface{}) *gocql.Query {
 	var (
 		vvs, fns = trimValues(vs)
