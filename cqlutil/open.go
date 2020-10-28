@@ -11,14 +11,8 @@ import (
 	backend "github.com/upfluence/cql/backend/gocql"
 )
 
-var defaultbuilder = &builder{
-	keyspace:        cfg.FetchString("CASSANDRA_KEYSPACE", "test"),
-	cassandraURL:    cfg.FetchString("CASSANDRA_URL", "127.0.0.1"),
-	port:            9042,
-	protocolVersion: 3,
-	consistency:     gocql.Quorum,
-	timeout:         15 * time.Second,
-	retryPolicy:     &gocql.SimpleRetryPolicy{NumRetries: 3},
+func WithCQLOption(fn func(*gocql.ClusterConfig)) Option {
+	return func(o *builder) { o.cqlOptions = append(o.cqlOptions, fn) }
 }
 
 func WithMiddleware(f cql.MiddlewareFactory) Option {
@@ -26,7 +20,7 @@ func WithMiddleware(f cql.MiddlewareFactory) Option {
 }
 
 func Keyspace(k string) Option {
-	return func(o *builder) { o.keyspace = k }
+	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.Keyspace = k })
 }
 
 func CassandraURL(url string) Option {
@@ -34,11 +28,11 @@ func CassandraURL(url string) Option {
 }
 
 func Consistency(c gocql.Consistency) Option {
-	return func(o *builder) { o.consistency = c }
+	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.Consistency = c })
 }
 
 func Timeout(t time.Duration) Option {
-	return func(o *builder) { o.timeout = t }
+	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.Timeout = t })
 }
 
 func Port(p int) Option {
@@ -46,42 +40,49 @@ func Port(p int) Option {
 }
 
 func RetryPolicy(p gocql.RetryPolicy) Option {
-	return func(o *builder) { o.retryPolicy = p }
+	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.RetryPolicy = p })
 }
 
 type builder struct {
-	keyspace, cassandraURL string
-	port, protocolVersion  int
+	cassandraURL string
+	port         int
 
-	consistency gocql.Consistency
-	retryPolicy gocql.RetryPolicy
-	timeout     time.Duration
-
+	cqlOptions  []func(*gocql.ClusterConfig)
 	middlewares []cql.MiddlewareFactory
 }
 
-func (o builder) cassandraIPs() []string {
-	return strings.Split(o.cassandraURL, ",")
+func (b *builder) clusterConfig() *gocql.ClusterConfig {
+	cc := gocql.NewCluster(strings.Split(b.cassandraURL, ",")...)
+
+	for _, opt := range b.cqlOptions {
+		opt(cc)
+	}
+
+	return cc
 }
 
 type Option func(*builder)
 
 func Open(opts ...Option) (cql.DB, error) {
-	opt := *defaultbuilder
-
-	for _, optFn := range opts {
-		optFn(&opt)
+	b := builder{
+		cassandraURL: cfg.FetchString("CASSANDRA_URL", "127.0.0.1"),
+		port:         9042,
+		cqlOptions: []func(*gocql.ClusterConfig){
+			func(cc *gocql.ClusterConfig) {
+				cc.Keyspace = cfg.FetchString("CASSANDRA_KEYSPACE", "test")
+				cc.ProtoVersion = 3
+				cc.Consistency = gocql.Quorum
+				cc.Timeout = 15 * time.Second
+				cc.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 3}
+			},
+		},
 	}
 
-	cluster := gocql.NewCluster(opt.cassandraIPs()...)
+	for _, opt := range opts {
+		opt(&b)
+	}
 
-	cluster.Consistency = opt.consistency
-	cluster.ProtoVersion = opt.protocolVersion
-	cluster.Keyspace = opt.keyspace
-	cluster.Timeout = opt.timeout
-	cluster.RetryPolicy = opt.retryPolicy
-
-	sess, err := cluster.CreateSession()
+	sess, err := b.clusterConfig().CreateSession()
 
 	if err != nil {
 		return nil, err
@@ -89,7 +90,7 @@ func Open(opts ...Option) (cql.DB, error) {
 
 	var db cql.DB = backend.NewDB(sess)
 
-	for _, m := range opt.middlewares {
+	for _, m := range b.middlewares {
 		db = m.Wrap(db)
 	}
 
