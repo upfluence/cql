@@ -12,7 +12,7 @@ import (
 	"github.com/upfluence/cql/x/migration"
 )
 
-func TestHelloWorld(t *testing.T) {
+func TestMigrationIntegration(t *testing.T) {
 	cqltest.NewTestCase(
 		cqltest.WithMigratorFunc(func(db cql.DB) migration.Migrator {
 			return migration.NewMigrator(

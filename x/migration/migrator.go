@@ -104,7 +104,7 @@ func (m *migrator) downOne(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	if err := executeMigration(ctx, r, m.db); err != nil {
+	if err := m.executeMigration(ctx, r); err != nil {
 		return false, errors.Wrapf(err, "migration %d", mi.ID())
 	}
 
@@ -147,7 +147,7 @@ func (m *migrator) upOne(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	if err := executeMigration(ctx, r, m.db); err != nil {
+	if err := m.executeMigration(ctx, r); err != nil {
 		return false, errors.Wrapf(err, "migration %d", mi.ID())
 	}
 
@@ -244,7 +244,7 @@ func (m *migrator) currentMigrationID(ctx context.Context) (uint, error) {
 	return num, cur.Close()
 }
 
-func executeMigration(ctx context.Context, r io.ReadCloser, db cql.DB) error {
+func (m *migrator) executeMigration(ctx context.Context, r io.ReadCloser) error {
 	buf, err := ioutil.ReadAll(r)
 
 	if err != nil {
@@ -253,5 +253,8 @@ func executeMigration(ctx context.Context, r io.ReadCloser, db cql.DB) error {
 
 	defer r.Close()
 
-	return errors.Wrap(db.Exec(ctx, string(buf)), "cant execute migration")
+	return errors.Wrap(
+		m.db.Exec(ctx, string(buf), cql.WithConsistency(m.opts.consistency)),
+		"cant execute migration",
+	)
 }
