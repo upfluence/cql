@@ -13,11 +13,25 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    services:
+      cassandra:
+        image: upfluence/cassandra
+        env:
+          CASSANDRA_CLUSTER_NAME: "dev-env"
+          LOCAL_ENV: true
+        options: >-
+          --health-cmd "nc -z localhost 7199"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 9042:9042
+
     steps:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.14.x
+          go-version: 1.15.x
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -29,4 +43,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Run tests
-        run: go test -v ./...
+        run: go test -p 1 -v ./...
+        env:
+          CASSANDRA_KEYSPACE: cql_test
