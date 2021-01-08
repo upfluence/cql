@@ -100,6 +100,8 @@ func (m *migrator) downOne(ctx context.Context) (bool, error) {
 		)
 	}
 
+	defer r.Close()
+
 	if err := m.toggleDirty(ctx, mi.ID(), true); err != nil {
 		return false, err
 	}
@@ -134,6 +136,8 @@ func (m *migrator) upOne(ctx context.Context) (bool, error) {
 			mi.ID(),
 		)
 	}
+
+	defer r.Close()
 
 	if err := executeCAS(
 		m.db.ExecCAS(
@@ -202,7 +206,7 @@ func (m *migrator) nextMigration(ctx context.Context) (Migration, error) {
 	)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "fetch last migration")
+		return nil, errors.Wrap(err, "fetch current migration")
 	}
 
 	if num > 0 {
@@ -244,14 +248,12 @@ func (m *migrator) currentMigrationID(ctx context.Context) (uint, error) {
 	return num, cur.Close()
 }
 
-func (m *migrator) executeMigration(ctx context.Context, r io.ReadCloser) error {
+func (m *migrator) executeMigration(ctx context.Context, r io.Reader) error {
 	buf, err := ioutil.ReadAll(r)
 
 	if err != nil {
 		return errors.Wrap(err, "cant read migration")
 	}
-
-	defer r.Close()
 
 	return errors.Wrap(
 		m.db.Exec(ctx, string(buf), cql.WithConsistency(m.opts.consistency)),

@@ -54,6 +54,7 @@ func (o *options) createMigrationStmt() string {
 func (o *options) updateMigrationStmt() string {
 	return fmt.Sprintf(updateMigrationStmtTmpl, o.table)
 }
+
 func (o *options) deleteMigrationStmt() string {
 	return fmt.Sprintf(deleteMigrationStmtTmpl, o.table)
 }

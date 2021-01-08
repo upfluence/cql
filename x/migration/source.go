@@ -181,7 +181,7 @@ func NewStaticSource(fs []string, fn StaticFetcher, logger log.Logger) Source {
 				fetcher: wrappedFetcher,
 			}
 		} else if m.name != name {
-			logger.Warningf("Name mismatch between migration %q, skipping it", f)
+			logger.Warningf("Name mismatch between %q and %q, for migration %q, skipping it", m.name, name, f)
 			continue
 		}
 
