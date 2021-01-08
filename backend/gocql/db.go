@@ -17,17 +17,25 @@ func NewDB(sess *gocql.Session) *DB {
 }
 
 func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query)) {
-	var res []interface{}
+	var (
+		args []interface{}
+		fns  []func(*gocql.Query)
+	)
 
 	for _, v := range vs {
-		if _, ok := v.(cql.Option); ok {
-			continue
+		switch vv := v.(type) {
+		case cql.WithConsistency:
+			fns = append(
+				fns,
+				func(q *gocql.Query) { q.SetConsistency(gocql.Consistency(vv)) },
+			)
+		case cql.Option:
+		default:
+			args = append(args, vv)
 		}
-
-		res = append(res, v)
 	}
 
-	return res, nil
+	return args, fns
 }
 
 func (db *DB) Session() *gocql.Session { return db.sess }

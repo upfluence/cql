@@ -11,6 +11,13 @@ import (
 	backend "github.com/upfluence/cql/backend/gocql"
 )
 
+var NoGossip = WithCQLOption(
+	func(cc *gocql.ClusterConfig) {
+		cc.DisableInitialHostLookup = false
+		cc.IgnorePeerAddr = false
+	},
+)
+
 func WithCQLOption(fn func(*gocql.ClusterConfig)) Option {
 	return func(o *builder) { o.cqlOptions = append(o.cqlOptions, fn) }
 }
