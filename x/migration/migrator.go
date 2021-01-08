@@ -199,29 +199,23 @@ func (m *migrator) currentMigration(ctx context.Context) (Migration, error) {
 }
 
 func (m *migrator) nextMigration(ctx context.Context) (Migration, error) {
-	var (
-		num, err = m.currentMigrationID(ctx)
-
-		mfn func(context.Context) (Migration, error) = m.source.First
-	)
+	var num, err = m.currentMigrationID(ctx)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch current migration")
 	}
 
-	if num > 0 {
-		mfn = func(ctx context.Context) (Migration, error) {
-			ok, next, err := m.source.Next(ctx, num)
-
-			if err != nil || !ok {
-				return nil, err
-			}
-
-			return m.source.Get(ctx, next)
-		}
+	if num == 0 {
+		return m.source.First(ctx)
 	}
 
-	return mfn(ctx)
+	ok, next, err := m.source.Next(ctx, num)
+
+	if err != nil || !ok {
+		return nil, err
+	}
+
+	return m.source.Get(ctx, next)
 }
 
 func (m *migrator) currentMigrationID(ctx context.Context) (uint, error) {
