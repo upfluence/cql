@@ -17,9 +17,9 @@ func TestMigrationIntegration(t *testing.T) {
 		cqltest.WithMigratorFunc(func(db cql.DB) migration.Migrator {
 			return migration.NewMigrator(
 				db,
-				staticSource{
-					up:   "CREATE TABLE IF NOT EXISTS foo(uuid UUID PRIMARY KEY, data blob)",
-					down: "DROP TABLE foo",
+				cqltest.StaticSource{
+					MigrationUp:   "CREATE TABLE IF NOT EXISTS foo(uuid UUID PRIMARY KEY, data blob)",
+					MigrationDown: "DROP TABLE foo",
 				},
 			)
 		}),
