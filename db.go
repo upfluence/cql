@@ -1,6 +1,11 @@
 package cql
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+var ErrNoRows = errors.New("cql: No rows found")
 
 type BatchType uint8
 
