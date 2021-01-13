@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/upfluence/cql"
 	"github.com/upfluence/cql/cqltest"
 	"github.com/upfluence/cql/x/migration"

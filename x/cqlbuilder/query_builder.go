@@ -1,8 +1,6 @@
 package cqlbuilder
 
-import (
-	"github.com/upfluence/cql"
-)
+import "github.com/upfluence/cql"
 
 type QueryBuilder struct {
 	cql.DB
