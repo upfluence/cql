@@ -38,6 +38,26 @@ func (set) Clone() UpdateOperation { return set{} }
 
 var Set = set{}
 
+type setOp struct{ op string }
+
+func (sp setOp) WriteTo(qw QueryWriter, k string, v interface{}, ok bool) error {
+	if !ok {
+		return errMissingUpdateValue
+	}
+
+	fmt.Fprintf(qw, "%s = %s %s ?", k, k, sp.op)
+	qw.AddArg(v)
+
+	return nil
+}
+
+func (sp setOp) Clone() UpdateOperation { return sp }
+
+var (
+	SetAdd    = setOp{op: "+"}
+	SetRemove = setOp{op: "-"}
+)
+
 type UpdateClause struct {
 	Field Marker
 	Op    UpdateOperation

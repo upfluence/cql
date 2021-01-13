@@ -61,25 +61,41 @@ func (bc *basicClause) WriteTo(w QueryWriter, vs map[string]interface{}) error {
 	return bc.fn(w, vv, bc.m.ToCQL())
 }
 
-func writeInClause(qw QueryWriter, vv interface{}, k string) error {
-	v := reflect.ValueOf(vv)
+func parseItems(vv interface{}) ([]interface{}, error) {
+	var v = reflect.ValueOf(vv)
 
 	if k := v.Kind(); k != reflect.Slice && k != reflect.Array {
-		return errInvalidType
+		return nil, errInvalidType
 	}
 
-	if v.Len() == 0 {
+	res := make([]interface{}, v.Len())
+
+	for i := 0; i < v.Len(); i++ {
+		res[i] = v.Index(i).Interface()
+	}
+
+	return res, nil
+}
+
+func writeInClause(qw QueryWriter, vv interface{}, k string) error {
+	vs, err := parseItems(vv)
+
+	if err != nil {
+		return err
+	}
+
+	if len(vs) == 0 {
 		io.WriteString(qw, "1=0")
 		return nil
 	}
 
 	fmt.Fprintf(qw, "%s IN (", k)
 
-	for i := 0; i < v.Len(); i++ {
+	for i, v := range vs {
 		io.WriteString(qw, "?")
-		qw.AddArg(v.Index(i).Interface())
+		qw.AddArg(v)
 
-		if i < v.Len()-1 {
+		if i < len(vs)-1 {
 			io.WriteString(qw, ", ")
 		}
 	}
