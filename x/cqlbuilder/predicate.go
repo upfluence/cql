@@ -15,13 +15,12 @@ type PredicateClause interface {
 	Markers() []Marker
 }
 
-func Eq(m Marker) PredicateClause   { return signClause(m, "=") }
-func Ne(m Marker) PredicateClause   { return signClause(m, "!=") }
-func Lt(m Marker) PredicateClause   { return signClause(m, "<") }
-func Lte(m Marker) PredicateClause  { return signClause(m, "<=") }
-func Gt(m Marker) PredicateClause   { return signClause(m, ">") }
-func Gte(m Marker) PredicateClause  { return signClause(m, ">=") }
-func Like(m Marker) PredicateClause { return signClause(m, "LIKE") }
+func Eq(m Marker) PredicateClause  { return signClause(m, "=") }
+func Ne(m Marker) PredicateClause  { return signClause(m, "!=") }
+func Lt(m Marker) PredicateClause  { return signClause(m, "<") }
+func Lte(m Marker) PredicateClause { return signClause(m, "<=") }
+func Gt(m Marker) PredicateClause  { return signClause(m, ">") }
+func Gte(m Marker) PredicateClause { return signClause(m, ">=") }
 
 func signClause(m Marker, s string) *basicClause {
 	return &basicClause{m: m, fn: writeSignClause(s)}
@@ -159,4 +158,87 @@ type StaticValuePredicateClause interface {
 	WriteTo(QueryWriter) error
 	Clone() StaticValuePredicateClause
 	Markers() []Marker
+}
+
+type multiClause struct {
+	wcs []PredicateClause
+
+	op string
+}
+
+func wrapMultiClause(wcs []PredicateClause, op string) PredicateClause {
+	var cs []PredicateClause
+
+	for _, wc := range wcs {
+		if wc == nil {
+			continue
+		}
+
+		if mc, ok := wc.(multiClause); ok && mc.op == op {
+			cs = append(cs, mc.wcs...)
+			continue
+		}
+
+		cs = append(cs, wc)
+	}
+
+	switch len(cs) {
+	case 0:
+		return nil
+	case 1:
+		return cs[0]
+	default:
+		return multiClause{wcs: cs, op: op}
+	}
+}
+
+func And(wcs ...PredicateClause) PredicateClause {
+	return wrapMultiClause(wcs, "AND")
+}
+
+func (mc multiClause) Markers() []Marker {
+	var ms []Marker
+
+	for _, c := range mc.wcs {
+		ms = append(ms, c.Markers()...)
+	}
+
+	return ms
+}
+
+func (mc multiClause) Clone() PredicateClause {
+	var wcs []PredicateClause
+
+	if len(mc.wcs) > 0 {
+		wcs = make([]PredicateClause, len(mc.wcs))
+
+		for i, pc := range mc.wcs {
+			wcs[i] = pc.Clone()
+		}
+	}
+
+	return multiClause{wcs: wcs, op: mc.op}
+}
+
+func (mc multiClause) WriteTo(w QueryWriter, vs map[string]interface{}) error {
+	if len(mc.wcs) == 0 {
+		io.WriteString(w, "1=0")
+		return nil
+	}
+
+	io.WriteString(w, "(")
+
+	for i, wc := range mc.wcs {
+		if err := wc.WriteTo(w, vs); err != nil {
+			return err
+		}
+
+		if i < len(mc.wcs)-1 {
+			fmt.Fprintf(w, ") %s (", mc.op)
+		}
+	}
+
+	io.WriteString(w, ")")
+
+	return nil
 }
