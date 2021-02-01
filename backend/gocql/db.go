@@ -62,7 +62,19 @@ func (db *DB) ExecCAS(ctx context.Context, stmt string, vs ...interface{}) cql.C
 }
 
 func (db *DB) QueryRow(ctx context.Context, stmt string, vs ...interface{}) cql.Scanner {
-	return db.query(ctx, stmt, vs)
+	return scanner{db.query(ctx, stmt, vs)}
+}
+
+type scanner struct {
+	cql.Scanner
+}
+
+func (s scanner) Scan(vs ...interface{}) error {
+	if err := s.Scanner.Scan(vs...); err != gocql.ErrNotFound {
+		return err
+	}
+
+	return cql.ErrNoRows
 }
 
 type cursor struct {

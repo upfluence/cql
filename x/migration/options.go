@@ -32,6 +32,8 @@ var defaultOptions = options{
 
 type Option func(*options)
 
+func MigrationTable(t string) Option { return func(o *options) { o.table = t } }
+
 type options struct {
 	table string
 
