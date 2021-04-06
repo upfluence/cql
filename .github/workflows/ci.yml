@@ -1,16 +1,16 @@
 name: ci
 
+
 on:
   push:
     branches:
-      - '**'
-    tags-ignore:
-      - '**'
+      - 'master'
+  pull_request:
 
 jobs:
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         go: [ '1.16.x', '1.15.x', '1.14.x' ]
