@@ -13,8 +13,8 @@ import (
 
 var NoGossip = WithCQLOption(
 	func(cc *gocql.ClusterConfig) {
-		cc.DisableInitialHostLookup = false
-		cc.IgnorePeerAddr = false
+		cc.DisableInitialHostLookup = true
+		cc.IgnorePeerAddr = true
 	},
 )
 
