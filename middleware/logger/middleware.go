@@ -31,18 +31,25 @@ type simplifiedLogger struct {
 }
 
 func (l *simplifiedLogger) Log(t OpType, q string, vs []interface{}, err error, d time.Duration, ofs ...record.Field) {
-	var fs = make([]record.Field, 0, len(vs)+2+len(ofs))
+	var (
+		i int
+
+		fs = make([]record.Field, 0, 2+len(ofs))
+	)
 
 	fs = append(fs, log.Field("op type", string(t)))
 	fs = append(fs, log.Field("duration", d))
 
-	for i, v := range vs {
+	for _, v := range vs {
+		if _, ok := v.(cql.Option); ok {
+			continue
+		}
+
 		fs = append(fs, log.Field(fmt.Sprintf("$%d", i+1), v))
+		i++
 	}
 
-	for _, f := range ofs {
-		fs = append(fs, f)
-	}
+	fs = append(fs, ofs...)
 
 	logger := l.logger
 
