@@ -32,21 +32,30 @@ type simplifiedLogger struct {
 
 func (l *simplifiedLogger) Log(t OpType, q string, vs []interface{}, err error, d time.Duration, ofs ...record.Field) {
 	var (
-		i int
+		i               int
+		withConsistency bool
+		consistency     cql.Consistency
 
 		fs = make([]record.Field, 0, 2+len(ofs))
 	)
 
-	fs = append(fs, log.Field("op type", string(t)))
+	fs = append(fs, log.Field("op_type", string(t)))
 	fs = append(fs, log.Field("duration", d))
 
 	for _, v := range vs {
-		if _, ok := v.(cql.Option); ok {
-			continue
+		switch vv := v.(type) {
+		case cql.WithConsistency:
+			withConsistency = true
+			consistency = cql.Consistency(vv)
+		case cql.Option:
+		default:
+			fs = append(fs, log.Field(fmt.Sprintf("$%d", i+1), v))
+			i++
 		}
+	}
 
-		fs = append(fs, log.Field(fmt.Sprintf("$%d", i+1), v))
-		i++
+	if withConsistency {
+		fs = append(fs, log.Field("consistency", consistency))
 	}
 
 	fs = append(fs, ofs...)
