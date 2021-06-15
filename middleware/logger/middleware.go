@@ -216,12 +216,6 @@ func (db *DB) Query(ctx context.Context, stmt string, vs ...interface{}) cql.Cur
 	return &cursor{Cursor: c, l: db.l, stmt: stmt, vs: vs, t0: t0}
 }
 
-var batchTypes = map[cql.BatchType]string{
-	cql.LoggedBatch:   "logged",
-	cql.UnloggedBatch: "unlogged",
-	cql.CounterBatch:  "counter",
-}
-
 type batch struct {
 	cql.Batch
 
@@ -248,7 +242,7 @@ func (b *batch) Exec() error {
 		err,
 		time.Since(t0),
 		log.Field("queries", int64(b.queries)),
-		log.Field("batch_type", batchTypes[b.bt]),
+		log.Field("batch_type", b.bt),
 	)
 
 	return err
@@ -266,7 +260,7 @@ func (b *batch) ExecCAS() (bool, cql.Cursor, error) {
 		time.Since(t0),
 		log.Field("applied", ok),
 		log.Field("queries", int64(b.queries)),
-		log.Field("batch_type", batchTypes[b.bt]),
+		log.Field("batch_type", b.bt),
 	)
 
 	return ok, cur, err

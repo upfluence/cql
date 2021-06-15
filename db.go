@@ -7,6 +7,7 @@ import (
 
 var ErrNoRows = errors.New("cql: No rows found")
 
+//go:generate stringer -type=BatchType
 type BatchType uint8
 
 const (
@@ -19,6 +20,7 @@ type Option interface {
 	IsCQLOption()
 }
 
+//go:generate stringer -type=Consistency
 type Consistency uint16
 
 const (
