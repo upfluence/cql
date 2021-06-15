@@ -43,7 +43,7 @@ func Timeout(t time.Duration) Option {
 }
 
 func Port(p int) Option {
-	return func(o *builder) { o.port = p }
+	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.Port = p })
 }
 
 func RetryPolicy(p gocql.RetryPolicy) Option {
@@ -52,7 +52,6 @@ func RetryPolicy(p gocql.RetryPolicy) Option {
 
 type builder struct {
 	cassandraURL string
-	port         int
 
 	cqlOptions  []func(*gocql.ClusterConfig)
 	middlewares []cql.MiddlewareFactory
@@ -73,7 +72,6 @@ type Option func(*builder)
 func Open(opts ...Option) (cql.DB, error) {
 	b := builder{
 		cassandraURL: cfg.FetchString("CASSANDRA_URL", "127.0.0.1"),
-		port:         9042,
 		cqlOptions: []func(*gocql.ClusterConfig){
 			func(cc *gocql.ClusterConfig) {
 				cc.Keyspace = cfg.FetchString("CASSANDRA_KEYSPACE", "test")
