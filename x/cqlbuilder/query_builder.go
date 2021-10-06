@@ -48,6 +48,16 @@ type CASStatement interface {
 	casScanKeys() []string
 }
 
+type StaticCASStatement struct {
+	CASStatement
+
+	Attrs map[string]interface{}
+}
+
+func (scs StaticCASStatement) buildQuery(map[string]interface{}) (string, []interface{}, error) {
+	return scs.CASStatement.buildQuery(scs.Attrs)
+}
+
 type InsertExecer struct {
 	execer
 
