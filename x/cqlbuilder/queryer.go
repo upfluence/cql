@@ -8,7 +8,7 @@ import (
 )
 
 type Queryer interface {
-	Query(context.Context, map[string]interface{}) (Cursor, error)
+	Query(context.Context, map[string]interface{}) Cursor
 	QueryRow(context.Context, map[string]interface{}) Scanner
 }
 
