@@ -6,10 +6,10 @@ require (
 	github.com/gocql/gocql v0.0.0-20201215165327-e49edf966d90
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.6.0 // indirect
 	github.com/stretchr/testify v1.6.1
-	github.com/upfluence/log v0.0.0-20200124211732-c9875854d3b8
-	github.com/upfluence/pkg v1.8.4
+	github.com/upfluence/errors v0.2.2 // indirect
+	github.com/upfluence/log v0.0.3
+	github.com/upfluence/pkg v1.10.7
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd // indirect
 )
 
