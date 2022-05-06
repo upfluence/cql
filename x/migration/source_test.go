@@ -9,41 +9,9 @@ import (
 	"github.com/upfluence/log/record"
 )
 
-type mockFetcher map[string]string
-
-func (mf mockFetcher) keys() []string {
-	var res = make([]string, 0, len(mf))
-
-	for k := range mf {
-		res = append(res, k)
-	}
-
-	return res
-}
-
-func (mf mockFetcher) fetch(k string) ([]byte, error) {
-	v, ok := mf[k]
-
-	if !ok {
-		panic("does not exist")
-	}
-
-	return []byte(v), nil
-}
-
 type sink struct{}
 
 func (sink) Log(record.Record) error { return nil }
-
-func newMockSource(vs map[string]string) Source {
-	mf := mockFetcher(vs)
-
-	return NewStaticSource(
-		mf.keys(),
-		mf.fetch,
-		log.NewLogger(log.WithSink(sink{})),
-	)
-}
 
 func assertMigration(t *testing.T, m Migration, id uint, up, down string) {
 	if mid := m.ID(); mid != id {
@@ -80,13 +48,14 @@ func assertMigration(t *testing.T, m Migration, id uint, up, down string) {
 }
 
 func TestFetcher(t *testing.T) {
-	s := newMockSource(
+	s := NewMapSource(
 		map[string]string{
 			"3_final.down.cql": "bar",
 			"2_initial.up.cql": "foo",
 			"3_final.up.cql":   "bar",
 			"other_file":       "fuz",
 		},
+		log.NewLogger(log.WithSink(sink{})),
 	)
 
 	ctx := context.Background()
