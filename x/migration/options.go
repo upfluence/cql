@@ -2,8 +2,7 @@ package migration
 
 import (
 	"fmt"
-
-	"github.com/upfluence/pkg/timeutil"
+	"time"
 
 	"github.com/upfluence/cql"
 )
@@ -27,7 +26,7 @@ CREATE TABLE IF NOT EXISTS %s (
 var defaultOptions = options{
 	table:       "migrations",
 	consistency: cql.Quorum,
-	clock:       timeutil.Background(),
+	clock:       time.Now,
 }
 
 type Option func(*options)
@@ -38,7 +37,7 @@ type options struct {
 	table string
 
 	consistency cql.Consistency
-	clock       timeutil.Clock
+	clock       func() time.Time
 }
 
 func (o *options) createTableMigrationStmt() string {

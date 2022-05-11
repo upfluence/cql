@@ -2,10 +2,11 @@ package cql
 
 import (
 	"context"
-	"errors"
+
+	"github.com/upfluence/errors"
 )
 
-var ErrNoRows = errors.New("cql: No rows found")
+var ErrNoRows = errors.New("No rows found")
 
 //go:generate stringer -type=BatchType
 type BatchType uint8

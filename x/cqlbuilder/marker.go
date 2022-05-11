@@ -1,11 +1,12 @@
 package cqlbuilder
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/upfluence/errors"
 )
 
-var errNoMarkers = errors.New("x/sqlbuilder: No marker given to the statement")
+var errNoMarkers = errors.New("No marker given to the statement")
 
 type ErrMissingKey struct{ Key string }
 

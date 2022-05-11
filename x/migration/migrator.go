@@ -5,15 +5,14 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/pkg/errors"
-	"github.com/upfluence/pkg/multierror"
+	"github.com/upfluence/errors"
 
 	"github.com/upfluence/cql"
 )
 
 var (
-	ErrConcurrentMigration = errors.New("x/migration: Concurrent migration running")
-	ErrDirty               = errors.New("x/migration: Migration is dirty")
+	ErrConcurrentMigration = errors.New("Concurrent migration running")
+	ErrDirty               = errors.New("Migration is dirty")
 )
 
 type Migrator interface {
@@ -32,7 +31,7 @@ func (ms MultiMigrator) Up(ctx context.Context) error {
 		}
 	}
 
-	return multierror.Wrap(errs)
+	return errors.WrapErrors(errs)
 }
 
 func (ms MultiMigrator) Down(ctx context.Context) error {
@@ -44,7 +43,7 @@ func (ms MultiMigrator) Down(ctx context.Context) error {
 		}
 	}
 
-	return multierror.Wrap(errs)
+	return errors.WrapErrors(errs)
 }
 
 type migrator struct {
@@ -144,7 +143,7 @@ func (m *migrator) upOne(ctx context.Context) (bool, error) {
 			ctx,
 			m.opts.createMigrationStmt(),
 			mi.ID(),
-			m.opts.clock.Now(),
+			m.opts.clock(),
 		),
 		3,
 	); err != nil {

@@ -1,13 +1,14 @@
 package cqlbuilder
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
+
+	"github.com/upfluence/errors"
 )
 
-var errInvalidType = errors.New("x/cqlbuilder: invalid type")
+var errInvalidType = errors.New("invalid type")
 
 type PredicateClause interface {
 	WriteTo(QueryWriter, map[string]interface{}) error

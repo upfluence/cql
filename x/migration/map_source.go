@@ -1,7 +1,7 @@
 package migration
 
 import (
-	"github.com/pkg/errors"
+	"github.com/upfluence/errors"
 	"github.com/upfluence/log"
 )
 

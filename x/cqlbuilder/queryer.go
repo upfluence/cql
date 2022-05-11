@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/upfluence/cql"
-	"github.com/upfluence/pkg/multierror"
+	"github.com/upfluence/errors"
 )
 
 type Queryer interface {
@@ -71,7 +71,7 @@ func (c *cursor) Scan(vs map[string]interface{}) bool {
 }
 
 func (c *cursor) Close() error {
-	return multierror.Combine(c.err, c.c.Close())
+	return errors.Combine(c.err, c.c.Close())
 }
 
 type errCursor struct{ error }

@@ -1,13 +1,14 @@
 package cqlbuilder
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/upfluence/errors"
 )
 
 var (
-	errMissingUpdateValue = errors.New("x/cqlbuilder: missing value of the key for update")
-	errNoUpdates          = errors.New("x/cqlbuilder: no update given")
+	errMissingUpdateValue = errors.New("missing value of the key for update")
+	errNoUpdates          = errors.New("no update given")
 )
 
 type LWTUpdateClause interface {
