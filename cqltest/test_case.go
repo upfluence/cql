@@ -3,12 +3,12 @@ package cqltest
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/upfluence/log/record"
-	"github.com/upfluence/pkg/cfg"
 
 	"github.com/upfluence/cql"
 	"github.com/upfluence/cql/cqlutil"
@@ -49,7 +49,13 @@ type TestCase struct {
 }
 
 func envFunc(env, other string) func() string {
-	return func() string { return cfg.FetchString(env, other) }
+	return func() string {
+		if v := os.Getenv(env); v != "" {
+			return v
+		}
+
+		return other
+	}
 }
 
 type TestCaseOption func(*TestCase)

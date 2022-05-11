@@ -1,11 +1,11 @@
 package cqlutil
 
 import (
+	"os"
 	"strings"
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/upfluence/pkg/cfg"
 
 	"github.com/upfluence/cql"
 	backend "github.com/upfluence/cql/backend/gocql"
@@ -67,14 +67,22 @@ func (b *builder) clusterConfig() *gocql.ClusterConfig {
 	return cc
 }
 
+func fetchString(env, fallback string) string {
+	if v := os.Getenv(env); v != "" {
+		return v
+	}
+
+	return fallback
+}
+
 type Option func(*builder)
 
 func Open(opts ...Option) (cql.DB, error) {
 	b := builder{
-		cassandraURL: cfg.FetchString("CASSANDRA_URL", "127.0.0.1"),
+		cassandraURL: fetchString("CASSANDRA_URL", "127.0.0.1"),
 		cqlOptions: []func(*gocql.ClusterConfig){
 			func(cc *gocql.ClusterConfig) {
-				cc.Keyspace = cfg.FetchString("CASSANDRA_KEYSPACE", "test")
+				cc.Keyspace = fetchString("CASSANDRA_KEYSPACE", "test")
 				cc.ProtoVersion = 3
 				cc.Consistency = gocql.Quorum
 				cc.Timeout = 15 * time.Second
