@@ -17,6 +17,16 @@ func TestSelectStatement(t *testing.T) {
 			wantArgs: []interface{}{3},
 		},
 		{
+			name: "basic with limit",
+			stmt: SelectStatement{
+				Table:         "foo",
+				SelectClauses: []Marker{Column("fiz"), Column("buz")},
+				WhereClause:   PlainCQLPredicate("1 = 2"),
+				Limit:         NullableInt{Valid: true, Int: 123},
+			},
+			wantStmt: "SELECT fiz, buz FROM foo WHERE 1 = 2 LIMIT 123",
+		},
+		{
 			name: "basic and",
 			stmt: SelectStatement{
 				Table:         "foo",

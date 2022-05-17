@@ -18,12 +18,19 @@ type OrderByClause struct {
 	Direction Direction
 }
 
+type NullableInt struct {
+	Int   int
+	Valid bool
+}
+
 type SelectStatement struct {
 	Table string
 
 	SelectClauses []Marker
 	WhereClause   PredicateClause
 	OrderByClause OrderByClause
+
+	Limit NullableInt
 
 	AllowFiltering bool
 }
@@ -61,6 +68,10 @@ func (ss SelectStatement) buildQuery(qvs map[string]interface{}) (string, []inte
 
 	if obc := ss.OrderByClause; obc.Field != nil {
 		fmt.Fprintf(&qw, " ORDER BY %s %s", obc.Field.ToCQL(), obc.Direction)
+	}
+
+	if ss.Limit.Valid {
+		fmt.Fprintf(&qw, " LIMIT %d", ss.Limit.Int)
 	}
 
 	if ss.AllowFiltering {
