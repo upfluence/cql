@@ -16,6 +16,20 @@ type PredicateClause interface {
 	Markers() []Marker
 }
 
+type plainCQLPredicate string
+
+func PlainCQLPredicate(stmt string) PredicateClause {
+	return plainCQLPredicate(stmt)
+}
+
+func (pcp plainCQLPredicate) WriteTo(qw QueryWriter, _ map[string]interface{}) error {
+	_, err := io.WriteString(qw, string(pcp))
+	return err
+}
+
+func (pcp plainCQLPredicate) Clone() PredicateClause { return pcp }
+func (pcp plainCQLPredicate) Markers() []Marker      { return nil }
+
 func Eq(m Marker) PredicateClause  { return signClause(m, "=") }
 func Ne(m Marker) PredicateClause  { return signClause(m, "!=") }
 func Lt(m Marker) PredicateClause  { return signClause(m, "<") }
