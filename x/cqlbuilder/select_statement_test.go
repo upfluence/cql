@@ -37,6 +37,41 @@ func TestSelectStatement(t *testing.T) {
 			wantStmt: "SELECT fiz, buz FROM foo WHERE (bar = ?) AND (fiz = ?)",
 			wantArgs: []interface{}{3, 1},
 		},
+		{
+			name: "valued compounded",
+			stmt: SelectStatement{
+				Table:         "foo",
+				SelectClauses: []Marker{Column("fiz"), Column("buz")},
+				WhereClause: CompoundedIn(
+					"compound_values",
+					[]Marker{Column("bar"), Column("fiz")},
+				),
+			},
+			vs: map[string]interface{}{
+				"compound_values": []map[string]interface{}{
+					{"bar": 1, "fiz": 2},
+					{"bar": 3, "fiz": 4},
+				},
+			},
+			wantStmt: "SELECT fiz, buz FROM foo WHERE (bar, fiz) IN ((?, ?), (?, ?))",
+			wantArgs: []interface{}{1, 2, 3, 4},
+		},
+		{
+			name: "static compounded",
+			stmt: SelectStatement{
+				Table:         "foo",
+				SelectClauses: []Marker{Column("fiz"), Column("buz")},
+				WhereClause: StaticCompoundedIn(
+					[]Marker{Column("bar"), Column("fiz")},
+					[]map[string]interface{}{
+						{"bar": 1, "fiz": 2},
+						{"bar": 3, "fiz": 4},
+					},
+				),
+			},
+			wantStmt: "SELECT fiz, buz FROM foo WHERE (bar, fiz) IN ((?, ?), (?, ?))",
+			wantArgs: []interface{}{1, 2, 3, 4},
+		},
 	} {
 		stc.assert(t)
 	}

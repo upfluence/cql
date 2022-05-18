@@ -53,6 +53,10 @@ func In(m Marker) PredicateClause {
 	return &basicClause{m: m, fn: writeInClause}
 }
 
+func StaticIn(m Marker, v interface{}) PredicateClause {
+	return Static(In(m), map[string]interface{}{m.Binding(): v})
+}
+
 type basicClause struct {
 	m  Marker
 	fn func(QueryWriter, interface{}, string) error
@@ -116,6 +120,89 @@ func writeInClause(qw QueryWriter, vv interface{}, k string) error {
 
 	io.WriteString(qw, ")")
 	return nil
+}
+
+type compoundedInClause struct {
+	k  string
+	ks []Marker
+}
+
+func (cic *compoundedInClause) Clone() PredicateClause {
+	return &compoundedInClause{
+		k:  cic.k,
+		ks: append([]Marker{}, cic.ks...),
+	}
+}
+
+func (cic *compoundedInClause) Markers() []Marker { return cic.ks }
+
+func (cic *compoundedInClause) WriteTo(qw QueryWriter, avs map[string]interface{}) error {
+	vs, ok := avs[cic.k].([]map[string]interface{})
+
+	if !ok {
+		return fmt.Errorf(
+			"values for the compounded in %q are missing, or not formatted as %T",
+			cic.k,
+			vs,
+		)
+	}
+
+	if len(vs) == 0 {
+		io.WriteString(qw, "1=0")
+		return nil
+	}
+
+	io.WriteString(qw, "(")
+
+	for i, k := range cic.ks {
+		io.WriteString(qw, k.ToCQL())
+
+		if i < len(cic.ks)-1 {
+			io.WriteString(qw, ", ")
+		}
+	}
+
+	io.WriteString(qw, ") IN (")
+
+	for i, v := range vs {
+		io.WriteString(qw, "(")
+
+		for j, k := range cic.ks {
+			kv, ok := v[k.Binding()]
+
+			if !ok {
+				return fmt.Errorf("Compounded in missing value for key %q", k)
+			}
+
+			io.WriteString(qw, "?")
+
+			if j < len(cic.ks)-1 {
+				io.WriteString(qw, ", ")
+			}
+
+			qw.AddArg(kv)
+		}
+
+		io.WriteString(qw, ")")
+
+		if i < len(vs)-1 {
+			io.WriteString(qw, ", ")
+		}
+	}
+
+	io.WriteString(qw, ")")
+	return nil
+}
+
+func CompoundedIn(k string, ks []Marker) PredicateClause {
+	return &compoundedInClause{k: k, ks: ks}
+}
+
+func StaticCompoundedIn(ks []Marker, vs []map[string]interface{}) PredicateClause {
+	return Static(
+		CompoundedIn("values", ks),
+		map[string]interface{}{"values": vs},
+	)
 }
 
 func Static(pc PredicateClause, vs map[string]interface{}) PredicateClause {
