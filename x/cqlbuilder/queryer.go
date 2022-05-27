@@ -41,6 +41,8 @@ type errScanner struct{ error }
 
 func (es errScanner) Scan(map[string]interface{}) error { return es.error }
 
+var zeroScanner = errScanner{error: cql.ErrNoRows}
+
 type Cursor interface {
 	Scan(map[string]interface{}) bool
 	Close() error
@@ -78,3 +80,5 @@ type errCursor struct{ error }
 
 func (ec errCursor) Scan(map[string]interface{}) bool { return false }
 func (ec errCursor) Close() error                     { return ec.error }
+
+var zeroCursor = errCursor{}

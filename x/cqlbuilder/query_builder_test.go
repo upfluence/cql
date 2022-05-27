@@ -51,6 +51,64 @@ func integrationTest(t *testing.T, fn func(*testing.T, cql.DB)) {
 	).Run(t, fn)
 }
 
+func TestEmptyIn(t *testing.T) {
+	integrationTest(t, func(t *testing.T, db cql.DB) {
+		qb := QueryBuilder{DB: db}
+
+		be := qb.PrepareBatch(
+			BatchStatement{
+				Type: cql.LoggedBatch,
+				Statements: []CASStatement{
+					InsertStatement{
+						Table:  "fuz",
+						Fields: []Marker{CQLExpression("foo1", "foo"), Column("bar")},
+					},
+					InsertStatement{
+						Table:  "fuz",
+						Fields: []Marker{CQLExpression("foo2", "foo"), Column("bar")},
+					},
+				},
+			},
+		)
+
+		err := be.Exec(
+			context.Background(),
+			map[string]interface{}{"foo1": "foo", "foo2": "bar", "bar": "buz"},
+		)
+
+		assert.NoError(t, err)
+
+		sq := qb.PrepareSelect(
+			SelectStatement{
+				Table:         "fuz",
+				SelectClauses: []Marker{Column("foo")},
+				WhereClause: And(
+					StaticEq(Column("bar"), "buz"),
+					In(Column("foo")),
+				),
+				AllowFiltering: true,
+			},
+		)
+
+		err = sq.QueryRow(
+			context.Background(),
+			map[string]interface{}{"foo": []string{}},
+		).Scan(nil)
+
+		assert.Equal(t, err, cql.ErrNoRows)
+
+		var foo string
+
+		err = sq.QueryRow(
+			context.Background(),
+			map[string]interface{}{"foo": []string{"foo"}},
+		).Scan(map[string]interface{}{"foo": &foo})
+
+		assert.NoError(t, err)
+		assert.Equal(t, "foo", foo)
+	})
+}
+
 func TestCAS(t *testing.T) {
 	integrationTest(t, func(t *testing.T, db cql.DB) {
 		qb := QueryBuilder{DB: db}

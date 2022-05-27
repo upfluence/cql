@@ -8,7 +8,10 @@ import (
 	"github.com/upfluence/errors"
 )
 
-var errInvalidType = errors.New("invalid type")
+var (
+	errInvalidType = errors.New("invalid type")
+	skipClause     = errors.New("skip clause")
+)
 
 type PredicateClause interface {
 	WriteTo(QueryWriter, map[string]interface{}) error
@@ -103,8 +106,7 @@ func writeInClause(qw QueryWriter, vv interface{}, k string) error {
 	}
 
 	if len(vs) == 0 {
-		io.WriteString(qw, "1=0")
-		return nil
+		return skipClause
 	}
 
 	fmt.Fprintf(qw, "%s IN (", k)
@@ -148,8 +150,7 @@ func (cic *compoundedInClause) WriteTo(qw QueryWriter, avs map[string]interface{
 	}
 
 	if len(vs) == 0 {
-		io.WriteString(qw, "1=0")
-		return nil
+		return skipClause
 	}
 
 	io.WriteString(qw, "(")
@@ -324,8 +325,7 @@ func (mc multiClause) Clone() PredicateClause {
 
 func (mc multiClause) WriteTo(w QueryWriter, vs map[string]interface{}) error {
 	if len(mc.wcs) == 0 {
-		io.WriteString(w, "1=0")
-		return nil
+		return skipClause
 	}
 
 	io.WriteString(w, "(")

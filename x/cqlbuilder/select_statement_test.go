@@ -38,6 +38,16 @@ func TestSelectStatement(t *testing.T) {
 			wantArgs: []interface{}{3, 1},
 		},
 		{
+			name: "basic and with nested in empty",
+			stmt: SelectStatement{
+				Table:         "foo",
+				SelectClauses: []Marker{Column("fiz"), Column("buz")},
+				WhereClause:   And(In(Column("bar")), In(Column("fiz"))),
+			},
+			vs:      map[string]interface{}{"fiz": []string{}, "bar": []string{"foo"}},
+			wantErr: skipClause,
+		},
+		{
 			name: "valued compounded",
 			stmt: SelectStatement{
 				Table:         "foo",
@@ -71,6 +81,18 @@ func TestSelectStatement(t *testing.T) {
 			},
 			wantStmt: "SELECT fiz, buz FROM foo WHERE (bar, fiz) IN ((?, ?), (?, ?))",
 			wantArgs: []interface{}{1, 2, 3, 4},
+		},
+		{
+			name: "static compounded empty",
+			stmt: SelectStatement{
+				Table:         "foo",
+				SelectClauses: []Marker{Column("fiz"), Column("buz")},
+				WhereClause: StaticCompoundedIn(
+					[]Marker{Column("bar"), Column("fiz")},
+					nil,
+				),
+			},
+			wantErr: skipClause,
 		},
 	} {
 		stc.assert(t)

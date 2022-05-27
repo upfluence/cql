@@ -89,7 +89,11 @@ type SelectQueryer struct {
 func (sq *SelectQueryer) Query(ctx context.Context, qvs map[string]interface{}) Cursor {
 	stmt, vs, err := sq.Statement.buildQuery(qvs)
 
-	if err != nil {
+	switch err {
+	case nil:
+	case skipClause:
+		return zeroCursor
+	default:
 		return errCursor{err}
 	}
 
@@ -102,7 +106,11 @@ func (sq *SelectQueryer) Query(ctx context.Context, qvs map[string]interface{}) 
 func (sq *SelectQueryer) QueryRow(ctx context.Context, qvs map[string]interface{}) Scanner {
 	stmt, vs, err := sq.Statement.buildQuery(qvs)
 
-	if err != nil {
+	switch err {
+	case nil:
+	case skipClause:
+		return zeroScanner
+	default:
 		return errScanner{err}
 	}
 

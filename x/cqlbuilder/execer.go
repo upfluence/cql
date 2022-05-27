@@ -16,6 +16,8 @@ func (ecs errCASScanner) ScanCAS(map[string]interface{}) (bool, error) {
 	return false, ecs.error
 }
 
+var zeroCASScanner = errCASScanner{}
+
 type casScanner struct {
 	sc cql.CASScanner
 	ks []string
@@ -50,7 +52,11 @@ type execer struct {
 func (e *execer) Exec(ctx context.Context, qvs map[string]interface{}) error {
 	var stmt, vs, err = e.stmt.buildQuery(qvs)
 
-	if err != nil {
+	switch err {
+	case nil:
+	case skipClause:
+		return nil
+	default:
 		return err
 	}
 
@@ -60,7 +66,11 @@ func (e *execer) Exec(ctx context.Context, qvs map[string]interface{}) error {
 func (e *execer) ExecCAS(ctx context.Context, qvs map[string]interface{}) CASScanner {
 	var stmt, vs, err = e.stmt.buildQuery(qvs)
 
-	if err != nil {
+	switch err {
+	case nil:
+	case skipClause:
+		return zeroCASScanner
+	default:
 		return errCASScanner{err}
 	}
 

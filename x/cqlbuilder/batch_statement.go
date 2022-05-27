@@ -23,11 +23,13 @@ func (be *BatchExecer) Exec(ctx context.Context, qvs map[string]interface{}) err
 	for _, s := range be.Statement.Statements {
 		stmt, vs, err := s.buildQuery(qvs)
 
-		if err != nil {
+		switch err {
+		case nil:
+			b.Query(stmt, vs...)
+		case skipClause:
+		default:
 			return err
 		}
-
-		b.Query(stmt, vs...)
 	}
 
 	return b.Exec()
