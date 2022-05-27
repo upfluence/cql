@@ -94,6 +94,14 @@ type DB struct {
 	l  Logger
 }
 
+func (db *DB) Unwrap() cql.DB {
+	if u, ok := db.db.(interface{ Unwrap() cql.DB }); ok {
+		return u.Unwrap()
+	}
+
+	return db.db
+}
+
 func trimValues(vs []interface{}) ([]interface{}, []record.Field) {
 	var fs []record.Field
 

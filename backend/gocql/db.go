@@ -116,3 +116,15 @@ func (db *DB) Batch(ctx context.Context, bt cql.BatchType) cql.Batch {
 
 	return batch{Batch: b, db: db}
 }
+
+func GetSession(db cql.DB) *gocql.Session {
+	if u, ok := db.(interface{ Unwrap() cql.DB }); ok {
+		return GetSession(u.Unwrap())
+	}
+
+	if gdb, ok := db.(*DB); ok {
+		return gdb.sess
+	}
+
+	return nil
+}
