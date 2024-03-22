@@ -111,8 +111,14 @@ var gocqlBatchTypes = map[cql.BatchType]gocql.BatchType{
 	cql.CounterBatch:  gocql.CounterBatch,
 }
 
-func (db *DB) Batch(ctx context.Context, bt cql.BatchType) cql.Batch {
+func (db *DB) Batch(ctx context.Context, bt cql.BatchType, opts ...cql.Option) cql.Batch {
 	b := db.sess.NewBatch(gocqlBatchTypes[bt]).WithContext(ctx)
+
+	for _, o := range opts {
+		if c, ok := o.(cql.WithConsistency); ok {
+			b.SetConsistency(gocql.Consistency(c))
+		}
+	}
 
 	return batch{Batch: b, db: db}
 }

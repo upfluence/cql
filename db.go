@@ -71,7 +71,7 @@ type DB interface {
 	QueryRow(context.Context, string, ...interface{}) Scanner
 	Query(context.Context, string, ...interface{}) Cursor
 
-	Batch(context.Context, BatchType) Batch
+	Batch(context.Context, BatchType, ...Option) Batch
 }
 
 type MiddlewareFactory interface {

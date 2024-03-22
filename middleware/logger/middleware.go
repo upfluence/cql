@@ -285,6 +285,6 @@ func (b *batch) ExecCAS() (bool, cql.Cursor, error) {
 	return ok, cur, err
 }
 
-func (db *DB) Batch(ctx context.Context, bt cql.BatchType) cql.Batch {
-	return &batch{Batch: db.db.Batch(ctx, bt), l: db.l, bt: bt}
+func (db *DB) Batch(ctx context.Context, bt cql.BatchType, opts ...cql.Option) cql.Batch {
+	return &batch{Batch: db.db.Batch(ctx, bt, opts...), l: db.l, bt: bt}
 }
