@@ -9,7 +9,8 @@ import (
 type BatchStatement struct {
 	Type cql.BatchType
 
-	Statements []CASStatement
+	Statements  []CASStatement
+	Consistency cql.Consistency
 }
 
 type BatchExecer struct {
@@ -18,7 +19,13 @@ type BatchExecer struct {
 }
 
 func (be *BatchExecer) Exec(ctx context.Context, qvs map[string]interface{}) error {
-	var b = be.QueryBuilder.Batch(ctx, be.Statement.Type)
+	var opts []cql.Option
+
+	if be.Statement.Consistency > cql.Any {
+		opts = append(opts, cql.WithConsistency(be.Statement.Consistency))
+	}
+
+	b := be.QueryBuilder.Batch(ctx, be.Statement.Type, opts...)
 
 	for _, s := range be.Statement.Statements {
 		stmt, vs, err := s.buildQuery(qvs)

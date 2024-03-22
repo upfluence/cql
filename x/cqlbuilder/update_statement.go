@@ -3,6 +3,7 @@ package cqlbuilder
 import (
 	"fmt"
 
+	"github.com/upfluence/cql"
 	"github.com/upfluence/errors"
 )
 
@@ -85,8 +86,9 @@ type UpdateStatement struct {
 	UpdateClauses []UpdateClause
 	WhereClause   PredicateClause
 
-	Options   DMLOptions
-	LWTClause LWTUpdateClause
+	Options     DMLOptions
+	LWTClause   LWTUpdateClause
+	Consistency cql.Consistency
 }
 
 func (us UpdateStatement) casScanKeys() []string {
@@ -130,6 +132,10 @@ func (us UpdateStatement) buildQuery(qvs map[string]interface{}) (string, []inte
 		if err := lc.writeTo(&qw, qvs); err != nil {
 			return "", nil, err
 		}
+	}
+
+	if us.Consistency > cql.Any {
+		qw.args = append(qw.args, cql.WithConsistency(us.Consistency))
 	}
 
 	return qw.String(), qw.args, nil

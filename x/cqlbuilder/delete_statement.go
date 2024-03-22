@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/upfluence/cql"
 )
 
 type LWTDeleteClause interface {
@@ -18,8 +20,9 @@ type DeleteStatement struct {
 	Fields      []Marker
 	WhereClause PredicateClause
 
-	Timestamp time.Time
-	LWTClause LWTDeleteClause
+	Timestamp   time.Time
+	LWTClause   LWTDeleteClause
+	Consistency cql.Consistency
 }
 
 func (ds DeleteStatement) casScanKeys() []string {
@@ -63,6 +66,10 @@ func (ds DeleteStatement) buildQuery(qvs map[string]interface{}) (string, []inte
 		if err := lc.writeTo(&qw, qvs); err != nil {
 			return "", nil, err
 		}
+	}
+
+	if ds.Consistency > cql.Any {
+		qw.args = append(qw.args, cql.WithConsistency(ds.Consistency))
 	}
 
 	return qw.String(), qw.args, nil

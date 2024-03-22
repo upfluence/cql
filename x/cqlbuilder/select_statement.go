@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/upfluence/cql"
 )
 
 type Direction string
@@ -32,6 +34,7 @@ type SelectStatement struct {
 
 	Limit NullableInt
 
+	Consistency    cql.Consistency
 	AllowFiltering bool
 }
 
@@ -76,6 +79,10 @@ func (ss SelectStatement) buildQuery(qvs map[string]interface{}) (string, []inte
 
 	if ss.AllowFiltering {
 		qw.WriteString(" ALLOW FILTERING")
+	}
+
+	if ss.Consistency > cql.Any {
+		qw.args = append(qw.args, cql.WithConsistency(ss.Consistency))
 	}
 
 	return qw.String(), qw.args, nil

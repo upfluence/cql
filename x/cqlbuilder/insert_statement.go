@@ -3,6 +3,8 @@ package cqlbuilder
 import (
 	"fmt"
 	"strings"
+
+	"github.com/upfluence/cql"
 )
 
 type LWTInsertClause interface {
@@ -16,8 +18,9 @@ type InsertStatement struct {
 
 	Fields []Marker
 
-	Options   DMLOptions
-	LWTClause LWTInsertClause
+	Options     DMLOptions
+	LWTClause   LWTInsertClause
+	Consistency cql.Consistency
 }
 
 func (is InsertStatement) casScanKeys() []string {
@@ -72,6 +75,10 @@ func (is InsertStatement) buildQuery(qvs map[string]interface{}) (string, []inte
 	}
 
 	is.Options.writeTo(&qw)
+
+	if is.Consistency > cql.Any {
+		qw.args = append(qw.args, cql.WithConsistency(is.Consistency))
+	}
 
 	return qw.String(), qw.args, nil
 }
