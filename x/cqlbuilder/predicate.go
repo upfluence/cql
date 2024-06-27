@@ -60,6 +60,22 @@ func StaticIn(m Marker, v interface{}) PredicateClause {
 	return Static(In(m), map[string]interface{}{m.Binding(): v})
 }
 
+func StaticGt(m Marker, v interface{}) PredicateClause {
+	return Static(Gt(m), map[string]interface{}{m.Binding(): v})
+}
+
+func StaticGte(m Marker, v interface{}) PredicateClause {
+	return Static(Gte(m), map[string]interface{}{m.Binding(): v})
+}
+
+func StaticLt(m Marker, v interface{}) PredicateClause {
+	return Static(Lt(m), map[string]interface{}{m.Binding(): v})
+}
+
+func StaticLte(m Marker, v interface{}) PredicateClause {
+	return Static(Lte(m), map[string]interface{}{m.Binding(): v})
+}
+
 type basicClause struct {
 	m  Marker
 	fn func(QueryWriter, interface{}, string) error
