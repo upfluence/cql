@@ -21,7 +21,7 @@ jobs:
           CASSANDRA_CLUSTER_NAME: "dev-env"
           LOCAL_ENV: true
         options: >-
-          --health-cmd "nc -z localhost 7199"
+          --health-cmd "nc -z 127.0.0.1 7199"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
