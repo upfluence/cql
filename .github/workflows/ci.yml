@@ -9,40 +9,8 @@ on:
 
 jobs:
   test:
-    name: Run Tests
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        go: [ '1.16.x', '1.15.x', '1.14.x' ]
-    services:
-      cassandra:
-        image: upfluence/cassandra
-        env:
-          CASSANDRA_CLUSTER_NAME: "dev-env"
-          LOCAL_ENV: true
-        options: >-
-          --health-cmd "nc -z localhost 7199"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 9042:9042
-    steps:
-      - name: Install Go ${{ matrix.go }}
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go }}
-
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Cache Modules
-        uses: actions/cache@v2
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-v1-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: Run tests
-        run: go test -p 1 -v ./...
-        env:
-          CASSANDRA_KEYSPACE: cql_test
+    uses: upfluence/private-actions/.github/workflows/app-go-test.yml@master
+    secrets: inherit
+    with:
+      go-version-matrix: "['1.16.x']"
+    with-cassandra: true
