@@ -65,6 +65,13 @@ type InsertExecer struct {
 	Statement    InsertStatement
 }
 
+func (ie *InsertExecer) WithOptions(opts DMLOptions) Execer {
+	stmt := ie.Statement
+	stmt.Options = opts
+
+	return ie.QueryBuilder.PrepareInsert(stmt)
+}
+
 type DeleteExecer struct {
 	execer
 
@@ -72,9 +79,23 @@ type DeleteExecer struct {
 	Statement    DeleteStatement
 }
 
+func (de *DeleteExecer) WithOptions(opts DMLOptions) Execer {
+	stmt := de.Statement
+	stmt.Timestamp = opts.Timestamp
+
+	return de.QueryBuilder.PrepareDelete(stmt)
+}
+
 type UpdateExecer struct {
 	execer
 
 	QueryBuilder *QueryBuilder
 	Statement    UpdateStatement
+}
+
+func (ue *UpdateExecer) WithOptions(opts DMLOptions) Execer {
+	stmt := ue.Statement
+	stmt.Options = opts
+
+	return ue.QueryBuilder.PrepareUpdate(stmt)
 }

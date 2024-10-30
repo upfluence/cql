@@ -42,6 +42,8 @@ func (cs *casScanner) ScanCAS(qvs map[string]interface{}) (bool, error) {
 type Execer interface {
 	Exec(context.Context, map[string]interface{}) error
 	ExecCAS(context.Context, map[string]interface{}) CASScanner
+
+	WithOptions(DMLOptions) Execer
 }
 
 type execer struct {
