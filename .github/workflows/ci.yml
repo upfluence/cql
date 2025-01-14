@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        go: [ '1.23.x' ]
+        go: [ '1.23.x', '1.22.x' ]
     services:
       cassandra:
         image: upfluence/cassandra
@@ -29,14 +29,14 @@ jobs:
           - 9042:9042
     steps:
       - name: Install Go ${{ matrix.go }}
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
-
+          cache: false
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Cache Modules
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-v1-${{ hashFiles('**/go.sum') }}
@@ -46,3 +46,9 @@ jobs:
         run: go test -p 1 -v ./...
         env:
           CASSANDRA_KEYSPACE: cql_test
+
+  release:
+    needs: test
+    if: github.ref == 'refs/heads/master'
+    uses: upfluence/actions/.github/workflows/lib-any-release.yml@master
+    secrets: inherit
