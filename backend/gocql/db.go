@@ -2,8 +2,9 @@ package gocql
 
 import (
 	"context"
+	"errors"
 
-	"github.com/gocql/gocql"
+	gocql "github.com/apache/cassandra-gocql-driver/v2"
 
 	"github.com/upfluence/cql"
 )
@@ -16,10 +17,10 @@ func NewDB(sess *gocql.Session) *DB {
 	return &DB{sess: sess}
 }
 
-func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query)) {
+func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query) *gocql.Query) {
 	var (
 		args []interface{}
-		fns  []func(*gocql.Query)
+		fns  []func(*gocql.Query) *gocql.Query
 	)
 
 	for _, v := range vs {
@@ -27,7 +28,7 @@ func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query)) {
 		case cql.WithConsistency:
 			fns = append(
 				fns,
-				func(q *gocql.Query) { q.SetConsistency(gocql.Consistency(vv)) },
+				func(q *gocql.Query) *gocql.Query { return q.Consistency(gocql.Consistency(vv)) },
 			)
 		case cql.Option:
 		default:
@@ -40,37 +41,43 @@ func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query)) {
 
 func (db *DB) Session() *gocql.Session { return db.sess }
 
-func (db *DB) query(ctx context.Context, stmt string, vs []interface{}) *gocql.Query {
+func (db *DB) query(stmt string, vs []interface{}) *gocql.Query {
 	var (
 		vvs, fns = trimValues(vs)
-		q        = db.sess.Query(stmt, vvs...).WithContext(ctx)
+		q        = db.sess.Query(stmt, vvs...)
 	)
 
 	for _, fn := range fns {
-		fn(q)
+		q = fn(q)
 	}
 
 	return q
 }
 
 func (db *DB) Exec(ctx context.Context, stmt string, vs ...interface{}) error {
-	return db.query(ctx, stmt, vs).Exec()
+	return db.query(stmt, vs).ExecContext(ctx)
 }
 
 func (db *DB) ExecCAS(ctx context.Context, stmt string, vs ...interface{}) cql.CASScanner {
-	return db.query(ctx, stmt, vs)
+	return &scanner{sc: db.query(stmt, vs), ctx: ctx}
 }
 
 func (db *DB) QueryRow(ctx context.Context, stmt string, vs ...interface{}) cql.Scanner {
-	return scanner{db.query(ctx, stmt, vs)}
+	return &scanner{sc: db.query(stmt, vs), ctx: ctx}
 }
 
 type scanner struct {
-	cql.Scanner
+	sc *gocql.Query
+
+	ctx context.Context
 }
 
-func (s scanner) Scan(vs ...interface{}) error {
-	if err := s.Scanner.Scan(vs...); err != gocql.ErrNotFound {
+func (s *scanner) ScanCAS(vs ...interface{}) (bool, error) {
+	return s.sc.ScanCASContext(s.ctx, vs...)
+}
+
+func (s *scanner) Scan(vs ...interface{}) error {
+	if err := s.sc.ScanContext(s.ctx, vs...); !errors.Is(err, gocql.ErrNotFound) {
 		return err
 	}
 
@@ -82,21 +89,25 @@ type cursor struct {
 }
 
 func (db *DB) Query(ctx context.Context, stmt string, vs ...interface{}) cql.Cursor {
-	return cursor{db.query(ctx, stmt, vs).Iter()}
+	return cursor{db.query(stmt, vs).IterContext(ctx)}
 }
 
 type batch struct {
 	*gocql.Batch
 
-	db *DB
+	ctx context.Context
+}
+
+func (b *batch) Query(stmt string, vs ...interface{}) {
+	b.Batch = b.Batch.Query(stmt, vs...)
 }
 
 func (b batch) Exec() error {
-	return b.db.sess.ExecuteBatch(b.Batch)
+	return b.ExecContext(b.ctx)
 }
 
 func (b batch) ExecCAS() (bool, cql.Cursor, error) {
-	ok, iter, err := b.db.sess.ExecuteBatchCAS(b.Batch)
+	ok, iter, err := b.ExecCASContext(b.ctx)
 
 	if err != nil {
 		return ok, nil, err
@@ -112,15 +123,15 @@ var gocqlBatchTypes = map[cql.BatchType]gocql.BatchType{
 }
 
 func (db *DB) Batch(ctx context.Context, bt cql.BatchType, opts ...cql.Option) cql.Batch {
-	b := db.sess.NewBatch(gocqlBatchTypes[bt]).WithContext(ctx)
+	b := db.sess.Batch(gocqlBatchTypes[bt])
 
 	for _, o := range opts {
 		if c, ok := o.(cql.WithConsistency); ok {
-			b.SetConsistency(gocql.Consistency(c))
+			b = b.Consistency(gocql.Consistency(c))
 		}
 	}
 
-	return batch{Batch: b, db: db}
+	return &batch{Batch: b, ctx: ctx}
 }
 
 func GetSession(db cql.DB) *gocql.Session {
