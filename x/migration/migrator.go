@@ -5,7 +5,6 @@ package migration
 import (
 	"context"
 	"io"
-	"io/ioutil"
 
 	"github.com/upfluence/errors"
 
@@ -13,8 +12,8 @@ import (
 )
 
 var (
-	ErrConcurrentMigration = errors.New("Concurrent migration running")
-	ErrDirty               = errors.New("Migration is dirty")
+	ErrConcurrentMigration = errors.New("concurrent migration running")
+	ErrDirty               = errors.New("migration is dirty")
 )
 
 // Migrator applies and rolls back database schema migrations.
@@ -41,8 +40,8 @@ func (ms MultiMigrator) Up(ctx context.Context) error {
 func (ms MultiMigrator) Down(ctx context.Context) error {
 	var errs []error
 
-	for _, m := range ms {
-		if err := m.Down(ctx); err != nil {
+	for i := len(ms) - 1; i >= 0; i-- {
+		if err := ms[i].Down(ctx); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -238,15 +237,19 @@ func (m *migrator) currentMigrationID(ctx context.Context) (uint, error) {
 		dirty = curDirty
 	}
 
+	if err := cur.Close(); err != nil {
+		return 0, err
+	}
+
 	if dirty {
 		return 0, ErrDirty
 	}
 
-	return num, cur.Close()
+	return num, nil
 }
 
 func (m *migrator) executeMigration(ctx context.Context, r io.Reader) error {
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 
 	if err != nil {
 		return errors.Wrap(err, "cant read migration")

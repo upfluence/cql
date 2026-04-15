@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,7 +12,7 @@ import (
 	"github.com/upfluence/log"
 )
 
-var ErrNotExist = errors.New("This migration does not exist")
+var ErrNotExist = errors.New("migration does not exist")
 
 // Migration represents a single database migration with up and down scripts.
 type Migration interface {
@@ -157,7 +156,7 @@ func wrapFetcher(fn StaticFetcher) func(string) (io.ReadCloser, error) {
 			return nil, err
 		}
 
-		return ioutil.NopCloser(bytes.NewReader(buf)), nil
+		return io.NopCloser(bytes.NewReader(buf)), nil
 	}
 }
 
