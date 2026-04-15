@@ -21,6 +21,20 @@ func NewDB(sess *gocql.Session) *DB {
 }
 
 func trimValues(vs []any) ([]any, []func(*gocql.Query) *gocql.Query) {
+	// Fast path: no options present, return the original slice as-is.
+	hasOption := false
+
+	for _, v := range vs {
+		if _, ok := v.(cql.Option); ok {
+			hasOption = true
+			break
+		}
+	}
+
+	if !hasOption {
+		return vs, nil
+	}
+
 	var (
 		args []any
 		fns  []func(*gocql.Query) *gocql.Query
@@ -58,6 +72,10 @@ func (db *DB) query(stmt string, vs []any) *gocql.Query {
 }
 
 func (db *DB) Exec(ctx context.Context, stmt string, vs ...any) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	return db.query(stmt, vs).ExecContext(ctx)
 }
 
@@ -76,10 +94,18 @@ type scanner struct {
 }
 
 func (s *scanner) ScanCAS(vs ...any) (bool, error) {
+	if err := s.ctx.Err(); err != nil {
+		return false, err
+	}
+
 	return s.sc.ScanCASContext(s.ctx, vs...)
 }
 
 func (s *scanner) Scan(vs ...any) error {
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+
 	if err := s.sc.ScanContext(s.ctx, vs...); !errors.Is(err, gocql.ErrNotFound) {
 		return err
 	}
@@ -91,7 +117,16 @@ type cursor struct {
 	*gocql.Iter
 }
 
+type errCursor struct{ err error }
+
+func (ec errCursor) Scan(...any) bool { return false }
+func (ec errCursor) Close() error     { return ec.err }
+
 func (db *DB) Query(ctx context.Context, stmt string, vs ...any) cql.Cursor {
+	if err := ctx.Err(); err != nil {
+		return errCursor{err}
+	}
+
 	return cursor{db.query(stmt, vs).IterContext(ctx)}
 }
 
@@ -106,10 +141,18 @@ func (b *batch) Query(stmt string, vs ...any) {
 }
 
 func (b batch) Exec() error {
+	if err := b.ctx.Err(); err != nil {
+		return err
+	}
+
 	return b.ExecContext(b.ctx)
 }
 
 func (b batch) ExecCAS() (bool, cql.Cursor, error) {
+	if err := b.ctx.Err(); err != nil {
+		return false, nil, err
+	}
+
 	ok, iter, err := b.ExecCASContext(b.ctx)
 
 	if err != nil {
