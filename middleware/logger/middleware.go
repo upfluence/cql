@@ -5,7 +5,6 @@ package logger
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/upfluence/log"
@@ -204,7 +203,7 @@ type cursor struct {
 }
 
 func (c *cursor) Scan(vs ...any) bool {
-	atomic.AddUint32(&c.scanned, 1)
+	c.scanned++
 
 	return c.Cursor.Scan(vs...)
 }
@@ -243,7 +242,7 @@ type batch struct {
 }
 
 func (b *batch) Query(stmt string, vs ...any) {
-	atomic.AddUint32(&b.queries, 1)
+	b.queries++
 
 	b.l.Log(Query, stmt, vs, nil, 0)
 
@@ -272,7 +271,7 @@ func (b *batch) ExecCAS() (bool, cql.Cursor, error) {
 	ok, cur, err := b.Batch.ExecCAS()
 
 	b.l.Log(
-		Exec,
+		ExecCAS,
 		"",
 		nil,
 		err,
