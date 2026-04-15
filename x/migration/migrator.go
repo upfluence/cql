@@ -1,3 +1,5 @@
+// Package migration provides database schema migration capabilities for CQL.
+// It supports both up and down migrations with dirty state tracking and concurrent migration protection.
 package migration
 
 import (
@@ -15,11 +17,13 @@ var (
 	ErrDirty               = errors.New("Migration is dirty")
 )
 
+// Migrator applies and rolls back database schema migrations.
 type Migrator interface {
 	Up(context.Context) error
 	Down(context.Context) error
 }
 
+// MultiMigrator runs multiple migrators in sequence for both up and down operations.
 type MultiMigrator []Migrator
 
 func (ms MultiMigrator) Up(ctx context.Context) error {
@@ -159,7 +163,7 @@ func (m *migrator) upOne(ctx context.Context) (bool, error) {
 
 func executeCAS(cs cql.CASScanner, count int) error {
 	var (
-		args    = make([]interface{}, count)
+		args    = make([]any, count)
 		ok, err = cs.ScanCAS(args...)
 	)
 

@@ -6,13 +6,14 @@ import (
 	"github.com/upfluence/cql"
 )
 
+// CASScanner scans the results of a compare-and-set operation into a map of named values.
 type CASScanner interface {
-	ScanCAS(map[string]interface{}) (bool, error)
+	ScanCAS(map[string]any) (bool, error)
 }
 
 type errCASScanner struct{ error }
 
-func (ecs errCASScanner) ScanCAS(map[string]interface{}) (bool, error) {
+func (ecs errCASScanner) ScanCAS(map[string]any) (bool, error) {
 	return false, ecs.error
 }
 
@@ -23,8 +24,8 @@ type casScanner struct {
 	ks []string
 }
 
-func (cs *casScanner) ScanCAS(qvs map[string]interface{}) (bool, error) {
-	vs := make([]interface{}, len(cs.ks))
+func (cs *casScanner) ScanCAS(qvs map[string]any) (bool, error) {
+	vs := make([]any, len(cs.ks))
 
 	for i, k := range cs.ks {
 		v, ok := qvs[k]
@@ -39,9 +40,11 @@ func (cs *casScanner) ScanCAS(qvs map[string]interface{}) (bool, error) {
 	return cs.sc.ScanCAS(vs...)
 }
 
+// Execer executes DML statements (INSERT, UPDATE, DELETE) with named parameters.
+// It supports both regular execution and compare-and-set (lightweight transaction) execution.
 type Execer interface {
-	Exec(context.Context, map[string]interface{}) error
-	ExecCAS(context.Context, map[string]interface{}) CASScanner
+	Exec(context.Context, map[string]any) error
+	ExecCAS(context.Context, map[string]any) CASScanner
 
 	WithOptions(DMLOptions) Execer
 }
@@ -51,7 +54,7 @@ type execer struct {
 	db   cql.DB
 }
 
-func (e *execer) Exec(ctx context.Context, qvs map[string]interface{}) error {
+func (e *execer) Exec(ctx context.Context, qvs map[string]any) error {
 	var stmt, vs, err = e.stmt.buildQuery(qvs)
 
 	switch err {
@@ -65,7 +68,7 @@ func (e *execer) Exec(ctx context.Context, qvs map[string]interface{}) error {
 	return e.db.Exec(ctx, stmt, vs...)
 }
 
-func (e *execer) ExecCAS(ctx context.Context, qvs map[string]interface{}) CASScanner {
+func (e *execer) ExecCAS(ctx context.Context, qvs map[string]any) CASScanner {
 	var stmt, vs, err = e.stmt.buildQuery(qvs)
 
 	switch err {

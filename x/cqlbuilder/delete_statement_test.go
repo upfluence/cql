@@ -10,9 +10,9 @@ func TestDeleteStatement(t *testing.T) {
 				Table:       "foo",
 				WhereClause: Eq(Column("bar")),
 			},
-			vs:       map[string]interface{}{"bar": 3},
+			vs:       map[string]any{"bar": 3},
 			wantStmt: "DELETE FROM foo WHERE bar = ?",
-			wantArgs: []interface{}{3},
+			wantArgs: []any{3},
 		},
 		{
 			name: "lwt field",
@@ -22,9 +22,9 @@ func TestDeleteStatement(t *testing.T) {
 				WhereClause: Eq(Column("bar")),
 				LWTClause:   PredicateLWTClause{Predicate: Eq(Column("buz"))},
 			},
-			vs:       map[string]interface{}{"fiz": 1, "buz": 2, "bar": 3},
+			vs:       map[string]any{"fiz": 1, "buz": 2, "bar": 3},
 			wantStmt: "DELETE fiz FROM foo WHERE bar = ? IF buz = ?",
-			wantArgs: []interface{}{3, 2},
+			wantArgs: []any{3, 2},
 		},
 	} {
 		stc.assert(t)

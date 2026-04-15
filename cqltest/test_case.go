@@ -1,3 +1,5 @@
+// Package cqltest provides testing utilities for CQL database tests.
+// It includes helpers for setting up test databases and running migrations.
 package cqltest
 
 import (
@@ -22,7 +24,7 @@ type testLogger struct {
 	testing.TB
 }
 
-func (tl testLogger) Log(ot logger.OpType, q string, vs []interface{}, _ error, d time.Duration, fs ...record.Field) {
+func (tl testLogger) Log(ot logger.OpType, q string, vs []any, _ error, d time.Duration, fs ...record.Field) {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "[OpType: %s] [Duration: %s] ", ot, d.String())
@@ -40,6 +42,7 @@ func (tl testLogger) Log(ot logger.OpType, q string, vs []interface{}, _ error, 
 	tl.TB.Log(b.String())
 }
 
+// TestCase manages the lifecycle of a Cassandra test database including setup, migration, and teardown.
 type TestCase struct {
 	ip       func() string
 	keyspace func() string

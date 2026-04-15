@@ -65,7 +65,7 @@ type shadowScanner struct {
 
 var ErrSkip = errors.New("skip")
 
-func (sc *shadowScanner) Scan(vs map[string]interface{}) error {
+func (sc *shadowScanner) Scan(vs map[string]any) error {
 	vs["token"] = &sc.token
 
 	sc.ok = sc.cur.Scan(vs)

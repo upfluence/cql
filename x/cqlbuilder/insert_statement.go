@@ -7,12 +7,14 @@ import (
 	"github.com/upfluence/cql"
 )
 
+// LWTInsertClause represents a lightweight transaction (IF) clause for INSERT statements.
 type LWTInsertClause interface {
 	LWTClause
 
 	isInsertClause()
 }
 
+// InsertStatement represents a CQL INSERT query with optional lightweight transaction support.
 type InsertStatement struct {
 	Table string
 
@@ -33,7 +35,7 @@ func (is InsertStatement) casScanKeys() []string {
 	return ks
 }
 
-func (is InsertStatement) buildQuery(qvs map[string]interface{}) (string, []interface{}, error) {
+func (is InsertStatement) buildQuery(qvs map[string]any) (string, []any, error) {
 	var (
 		qw queryWriter
 

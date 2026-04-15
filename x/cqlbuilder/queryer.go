@@ -7,13 +7,15 @@ import (
 	"github.com/upfluence/errors"
 )
 
+// Queryer executes SELECT statements with named parameters and returns results as maps.
 type Queryer interface {
-	Query(context.Context, map[string]interface{}) Cursor
-	QueryRow(context.Context, map[string]interface{}) Scanner
+	Query(context.Context, map[string]any) Cursor
+	QueryRow(context.Context, map[string]any) Scanner
 }
 
+// Scanner scans a single row result into a map of named values.
 type Scanner interface {
-	Scan(map[string]interface{}) error
+	Scan(map[string]any) error
 }
 
 type scanner struct {
@@ -21,8 +23,8 @@ type scanner struct {
 	ks []string
 }
 
-func (sc *scanner) Scan(vs map[string]interface{}) error {
-	var svs = make([]interface{}, len(sc.ks))
+func (sc *scanner) Scan(vs map[string]any) error {
+	var svs = make([]any, len(sc.ks))
 
 	for i, k := range sc.ks {
 		v, ok := vs[k]
@@ -39,12 +41,13 @@ func (sc *scanner) Scan(vs map[string]interface{}) error {
 
 type errScanner struct{ error }
 
-func (es errScanner) Scan(map[string]interface{}) error { return es.error }
+func (es errScanner) Scan(map[string]any) error { return es.error }
 
 var zeroScanner = errScanner{error: cql.ErrNoRows}
 
+// Cursor iterates over multiple rows from a query result with named value scanning.
 type Cursor interface {
-	Scan(map[string]interface{}) bool
+	Scan(map[string]any) bool
 	Close() error
 }
 
@@ -55,8 +58,8 @@ type cursor struct {
 	err error
 }
 
-func (c *cursor) Scan(vs map[string]interface{}) bool {
-	var svs = make([]interface{}, len(c.ks))
+func (c *cursor) Scan(vs map[string]any) bool {
+	var svs = make([]any, len(c.ks))
 
 	for i, k := range c.ks {
 		v, ok := vs[k]
@@ -78,7 +81,7 @@ func (c *cursor) Close() error {
 
 type errCursor struct{ error }
 
-func (ec errCursor) Scan(map[string]interface{}) bool { return false }
-func (ec errCursor) Close() error                     { return ec.error }
+func (ec errCursor) Scan(map[string]any) bool { return false }
+func (ec errCursor) Close() error             { return ec.error }
 
 var zeroCursor = errCursor{}

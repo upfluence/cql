@@ -15,16 +15,19 @@ const (
 	Desc Direction = "DESC"
 )
 
+// OrderByClause specifies the ordering of query results by a field and direction.
 type OrderByClause struct {
 	Field     Marker
 	Direction Direction
 }
 
+// NullableInt represents an optional integer value for SQL LIMIT clauses.
 type NullableInt struct {
 	Int   int
 	Valid bool
 }
 
+// SelectStatement represents a CQL SELECT query with WHERE, ORDER BY, and LIMIT clauses.
 type SelectStatement struct {
 	Table string
 
@@ -48,7 +51,7 @@ func (ss SelectStatement) scanKeys() []string {
 	return vs
 }
 
-func (ss SelectStatement) buildQuery(qvs map[string]interface{}) (string, []interface{}, error) {
+func (ss SelectStatement) buildQuery(qvs map[string]any) (string, []any, error) {
 	var (
 		qw queryWriter
 
@@ -88,12 +91,13 @@ func (ss SelectStatement) buildQuery(qvs map[string]interface{}) (string, []inte
 	return qw.String(), qw.args, nil
 }
 
+// SelectQueryer prepares and executes SELECT statements with named parameter support.
 type SelectQueryer struct {
 	QueryBuilder *QueryBuilder
 	Statement    SelectStatement
 }
 
-func (sq *SelectQueryer) Query(ctx context.Context, qvs map[string]interface{}) Cursor {
+func (sq *SelectQueryer) Query(ctx context.Context, qvs map[string]any) Cursor {
 	stmt, vs, err := sq.Statement.buildQuery(qvs)
 
 	switch err {
@@ -110,7 +114,7 @@ func (sq *SelectQueryer) Query(ctx context.Context, qvs map[string]interface{}) 
 	}
 }
 
-func (sq *SelectQueryer) QueryRow(ctx context.Context, qvs map[string]interface{}) Scanner {
+func (sq *SelectQueryer) QueryRow(ctx context.Context, qvs map[string]any) Scanner {
 	stmt, vs, err := sq.Statement.buildQuery(qvs)
 
 	switch err {

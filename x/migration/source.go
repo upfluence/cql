@@ -15,6 +15,7 @@ import (
 
 var ErrNotExist = errors.New("This migration does not exist")
 
+// Migration represents a single database migration with up and down scripts.
 type Migration interface {
 	ID() uint
 
@@ -22,6 +23,7 @@ type Migration interface {
 	Down() (io.ReadCloser, error)
 }
 
+// Source provides access to a collection of migrations and navigation between them.
 type Source interface {
 	Get(context.Context, uint) (Migration, error)
 
@@ -30,6 +32,7 @@ type Source interface {
 	Prev(context.Context, uint) (bool, uint, error)
 }
 
+// StaticFetcher is a function that retrieves migration file contents by name.
 type StaticFetcher func(string) ([]byte, error)
 
 type migration struct {

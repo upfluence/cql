@@ -10,9 +10,9 @@ func TestInsertStatement(t *testing.T) {
 				Table:  "foo",
 				Fields: []Marker{Column("fiz"), Column("buz")},
 			},
-			vs:       map[string]interface{}{"fiz": 1, "buz": 2},
+			vs:       map[string]any{"fiz": 1, "buz": 2},
 			wantStmt: "INSERT INTO foo(fiz, buz) VALUES (?, ?)",
-			wantArgs: []interface{}{1, 2},
+			wantArgs: []any{1, 2},
 		},
 		{
 			name: "basic",
@@ -21,9 +21,9 @@ func TestInsertStatement(t *testing.T) {
 				Fields:    []Marker{Column("fiz"), Column("buz")},
 				LWTClause: NotExistsClause,
 			},
-			vs:       map[string]interface{}{"fiz": 1, "buz": 2},
+			vs:       map[string]any{"fiz": 1, "buz": 2},
 			wantStmt: "INSERT INTO foo(fiz, buz) VALUES (?, ?) IF NOT EXISTS",
-			wantArgs: []interface{}{1, 2},
+			wantArgs: []any{1, 2},
 		},
 		{
 			name: "missing key",
@@ -31,7 +31,7 @@ func TestInsertStatement(t *testing.T) {
 				Table:  "foo",
 				Fields: []Marker{Column("fiz"), Column("buz")},
 			},
-			vs:      map[string]interface{}{"fiz": 1},
+			vs:      map[string]any{"fiz": 1},
 			wantErr: ErrMissingKey{Key: "buz"},
 		},
 	} {

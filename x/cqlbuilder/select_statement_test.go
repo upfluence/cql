@@ -12,9 +12,9 @@ func TestSelectStatement(t *testing.T) {
 				WhereClause:    Eq(Column("bar")),
 				AllowFiltering: true,
 			},
-			vs:       map[string]interface{}{"fiz": 1, "buz": 2, "bar": 3},
+			vs:       map[string]any{"fiz": 1, "buz": 2, "bar": 3},
 			wantStmt: "SELECT fiz, buz FROM foo WHERE bar = ? ALLOW FILTERING",
-			wantArgs: []interface{}{3},
+			wantArgs: []any{3},
 		},
 		{
 			name: "basic with limit",
@@ -33,9 +33,9 @@ func TestSelectStatement(t *testing.T) {
 				SelectClauses: []Marker{Column("fiz"), Column("buz")},
 				WhereClause:   And(Eq(Column("bar")), Eq(Column("fiz"))),
 			},
-			vs:       map[string]interface{}{"fiz": 1, "buz": 2, "bar": 3},
+			vs:       map[string]any{"fiz": 1, "buz": 2, "bar": 3},
 			wantStmt: "SELECT fiz, buz FROM foo WHERE (bar = ?) AND (fiz = ?)",
-			wantArgs: []interface{}{3, 1},
+			wantArgs: []any{3, 1},
 		},
 		{
 			name: "basic and with nested in empty",
@@ -44,7 +44,7 @@ func TestSelectStatement(t *testing.T) {
 				SelectClauses: []Marker{Column("fiz"), Column("buz")},
 				WhereClause:   And(In(Column("bar")), In(Column("fiz"))),
 			},
-			vs:      map[string]interface{}{"fiz": []string{}, "bar": []string{"foo"}},
+			vs:      map[string]any{"fiz": []string{}, "bar": []string{"foo"}},
 			wantErr: skipClause,
 		},
 		{
@@ -57,14 +57,14 @@ func TestSelectStatement(t *testing.T) {
 					[]Marker{Column("bar"), Column("fiz")},
 				),
 			},
-			vs: map[string]interface{}{
-				"compound_values": []map[string]interface{}{
+			vs: map[string]any{
+				"compound_values": []map[string]any{
 					{"bar": 1, "fiz": 2},
 					{"bar": 3, "fiz": 4},
 				},
 			},
 			wantStmt: "SELECT fiz, buz FROM foo WHERE (bar, fiz) IN ((?, ?), (?, ?))",
-			wantArgs: []interface{}{1, 2, 3, 4},
+			wantArgs: []any{1, 2, 3, 4},
 		},
 		{
 			name: "static compounded",
@@ -73,14 +73,14 @@ func TestSelectStatement(t *testing.T) {
 				SelectClauses: []Marker{Column("fiz"), Column("buz")},
 				WhereClause: StaticCompoundedIn(
 					[]Marker{Column("bar"), Column("fiz")},
-					[]map[string]interface{}{
+					[]map[string]any{
 						{"bar": 1, "fiz": 2},
 						{"bar": 3, "fiz": 4},
 					},
 				),
 			},
 			wantStmt: "SELECT fiz, buz FROM foo WHERE (bar, fiz) IN ((?, ?), (?, ?))",
-			wantArgs: []interface{}{1, 2, 3, 4},
+			wantArgs: []any{1, 2, 3, 4},
 		},
 		{
 			name: "static compounded empty",

@@ -12,20 +12,22 @@ var (
 	errNoUpdates          = errors.New("no update given")
 )
 
+// LWTUpdateClause represents a lightweight transaction (IF) clause for UPDATE statements.
 type LWTUpdateClause interface {
 	LWTClause
 
 	isUpdateClause()
 }
 
+// UpdateOperation defines how a field should be updated (e.g., set, add, remove).
 type UpdateOperation interface {
-	WriteTo(QueryWriter, string, interface{}, bool) error
+	WriteTo(QueryWriter, string, any, bool) error
 	Clone() UpdateOperation
 }
 
 type set struct{}
 
-func (set) WriteTo(qw QueryWriter, k string, v interface{}, ok bool) error {
+func (set) WriteTo(qw QueryWriter, k string, v any, ok bool) error {
 	if !ok {
 		return errMissingUpdateValue
 	}
@@ -42,7 +44,7 @@ var Set = set{}
 
 type setOp struct{ op string }
 
-func (sp setOp) WriteTo(qw QueryWriter, k string, v interface{}, ok bool) error {
+func (sp setOp) WriteTo(qw QueryWriter, k string, v any, ok bool) error {
 	if !ok {
 		return errMissingUpdateValue
 	}
@@ -60,12 +62,13 @@ var (
 	SetRemove = setOp{op: "-"}
 )
 
+// UpdateClause specifies a field and operation for an UPDATE statement's SET clause.
 type UpdateClause struct {
 	Field Marker
 	Op    UpdateOperation
 }
 
-func (uc UpdateClause) writeTo(qw QueryWriter, qvs map[string]interface{}) error {
+func (uc UpdateClause) writeTo(qw QueryWriter, qvs map[string]any) error {
 	var (
 		k     = uc.Field.Binding()
 		v, ok = qvs[k]
@@ -80,6 +83,7 @@ func (uc UpdateClause) writeTo(qw QueryWriter, qvs map[string]interface{}) error
 	return err
 }
 
+// UpdateStatement represents a CQL UPDATE query with SET, WHERE, and optional IF clauses.
 type UpdateStatement struct {
 	Table string
 
@@ -99,7 +103,7 @@ func (us UpdateStatement) casScanKeys() []string {
 	return nil
 }
 
-func (us UpdateStatement) buildQuery(qvs map[string]interface{}) (string, []interface{}, error) {
+func (us UpdateStatement) buildQuery(qvs map[string]any) (string, []any, error) {
 	var qw queryWriter
 
 	if len(us.UpdateClauses) == 0 {

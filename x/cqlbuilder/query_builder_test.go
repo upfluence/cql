@@ -15,10 +15,10 @@ type statementTestCase struct {
 	name string
 
 	stmt statement
-	vs   map[string]interface{}
+	vs   map[string]any
 
 	wantStmt string
-	wantArgs []interface{}
+	wantArgs []any
 	wantErr  error
 }
 
@@ -73,7 +73,7 @@ func TestEmptyIn(t *testing.T) {
 
 		err := be.Exec(
 			context.Background(),
-			map[string]interface{}{"foo1": "foo", "foo2": "bar", "bar": "buz"},
+			map[string]any{"foo1": "foo", "foo2": "bar", "bar": "buz"},
 		)
 
 		assert.NoError(t, err)
@@ -92,7 +92,7 @@ func TestEmptyIn(t *testing.T) {
 
 		err = sq.QueryRow(
 			context.Background(),
-			map[string]interface{}{"foo": []string{}},
+			map[string]any{"foo": []string{}},
 		).Scan(nil)
 
 		assert.Equal(t, err, cql.ErrNoRows)
@@ -101,8 +101,8 @@ func TestEmptyIn(t *testing.T) {
 
 		err = sq.QueryRow(
 			context.Background(),
-			map[string]interface{}{"foo": []string{"foo"}},
-		).Scan(map[string]interface{}{"foo": &foo})
+			map[string]any{"foo": []string{"foo"}},
+		).Scan(map[string]any{"foo": &foo})
 
 		assert.NoError(t, err)
 		assert.Equal(t, "foo", foo)
@@ -246,7 +246,7 @@ func TestBatch(t *testing.T) {
 
 		err := be.Exec(
 			context.Background(),
-			map[string]interface{}{"foo1": "foo", "foo2": "bar", "bar": "buz"},
+			map[string]any{"foo1": "foo", "foo2": "bar", "bar": "buz"},
 		)
 
 		assert.NoError(t, err)
@@ -262,7 +262,7 @@ func TestBatch(t *testing.T) {
 
 		vs := make(map[string]string)
 
-		for cur.Scan(map[string]interface{}{"foo": &foo, "bar": &bar}) {
+		for cur.Scan(map[string]any{"foo": &foo, "bar": &bar}) {
 			vs[foo] = bar
 		}
 
@@ -276,14 +276,14 @@ func queryRow(sq *SelectQueryer, foo string) (string, error) {
 
 	return bar, sq.QueryRow(
 		context.Background(),
-		map[string]interface{}{"foo": foo},
-	).Scan(map[string]interface{}{"bar": &bar})
+		map[string]any{"foo": foo},
+	).Scan(map[string]any{"bar": &bar})
 }
 
 func exec(e Execer, foo, bar string) error {
 	return e.Exec(
 		context.Background(),
-		map[string]interface{}{"foo": foo, "bar": bar},
+		map[string]any{"foo": foo, "bar": bar},
 	)
 }
 
@@ -292,9 +292,9 @@ func execCAS(e Execer, foo, bar string) (bool, string, string, error) {
 
 	ok, err := e.ExecCAS(
 		context.Background(),
-		map[string]interface{}{"foo": foo, "bar": bar},
+		map[string]any{"foo": foo, "bar": bar},
 	).ScanCAS(
-		map[string]interface{}{"foo": &outFoo, "bar": &outBar},
+		map[string]any{"foo": &outFoo, "bar": &outBar},
 	)
 
 	return ok, outFoo, outBar, err

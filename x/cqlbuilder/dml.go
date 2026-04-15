@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// DMLOptions specifies additional options for DML operations such as TTL and timestamp.
 type DMLOptions struct {
 	TTL       time.Duration
 	Timestamp time.Time
@@ -35,15 +36,16 @@ func (do DMLOptions) writeTo(w io.Writer) {
 	}
 }
 
+// LWTClause represents a lightweight transaction (IF) clause that can be attached to DML statements.
 type LWTClause interface {
-	writeTo(QueryWriter, map[string]interface{}) error
+	writeTo(QueryWriter, map[string]any) error
 }
 
 type notExistsClause struct{}
 
 var NotExistsClause = notExistsClause{}
 
-func (notExistsClause) writeTo(qw QueryWriter, _ map[string]interface{}) error {
+func (notExistsClause) writeTo(qw QueryWriter, _ map[string]any) error {
 	_, err := io.WriteString(qw, "IF NOT EXISTS")
 	return err
 }
@@ -55,7 +57,7 @@ type existsClause struct{}
 
 var ExistsClause = existsClause{}
 
-func (existsClause) writeTo(qw QueryWriter, _ map[string]interface{}) error {
+func (existsClause) writeTo(qw QueryWriter, _ map[string]any) error {
 	_, err := io.WriteString(qw, "IF EXISTS")
 	return err
 }
@@ -63,11 +65,12 @@ func (existsClause) writeTo(qw QueryWriter, _ map[string]interface{}) error {
 func (existsClause) isUpdateClause() {}
 func (existsClause) isDeleteClause() {}
 
+// PredicateLWTClause wraps a PredicateClause as an IF condition for lightweight transactions.
 type PredicateLWTClause struct {
 	Predicate PredicateClause
 }
 
-func (plc PredicateLWTClause) writeTo(qw QueryWriter, vs map[string]interface{}) error {
+func (plc PredicateLWTClause) writeTo(qw QueryWriter, vs map[string]any) error {
 	if _, err := io.WriteString(qw, "IF "); err != nil {
 		return err
 	}

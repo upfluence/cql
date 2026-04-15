@@ -8,12 +8,15 @@ import (
 
 var errNoMarkers = errors.New("No marker given to the statement")
 
+// ErrMissingKey is returned when a required named parameter is not provided.
 type ErrMissingKey struct{ Key string }
 
 func (emk ErrMissingKey) Error() string {
 	return fmt.Sprintf("%q key missing", emk.Key)
 }
 
+// Marker represents a named parameter or column reference in a CQL query.
+// It provides both a binding name for parameter values and a CQL string representation.
 type Marker interface {
 	Binding() string
 	ToCQL() string

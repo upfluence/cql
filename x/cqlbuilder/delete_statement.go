@@ -8,12 +8,14 @@ import (
 	"github.com/upfluence/cql"
 )
 
+// LWTDeleteClause represents a lightweight transaction (IF) clause for DELETE statements.
 type LWTDeleteClause interface {
 	LWTClause
 
 	isDeleteClause()
 }
 
+// DeleteStatement represents a CQL DELETE query with optional WHERE and IF clauses.
 type DeleteStatement struct {
 	Table string
 
@@ -33,7 +35,7 @@ func (ds DeleteStatement) casScanKeys() []string {
 	return nil
 }
 
-func (ds DeleteStatement) buildQuery(qvs map[string]interface{}) (string, []interface{}, error) {
+func (ds DeleteStatement) buildQuery(qvs map[string]any) (string, []any, error) {
 	var (
 		qw queryWriter
 

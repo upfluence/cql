@@ -6,6 +6,7 @@ import (
 	"github.com/upfluence/cql"
 )
 
+// BatchStatement represents a CQL batch operation containing multiple statements.
 type BatchStatement struct {
 	Type cql.BatchType
 
@@ -13,12 +14,13 @@ type BatchStatement struct {
 	Consistency cql.Consistency
 }
 
+// BatchExecer prepares and executes batch statements with named parameters.
 type BatchExecer struct {
 	QueryBuilder *QueryBuilder
 	Statement    BatchStatement
 }
 
-func (be *BatchExecer) Exec(ctx context.Context, qvs map[string]interface{}) error {
+func (be *BatchExecer) Exec(ctx context.Context, qvs map[string]any) error {
 	var opts []cql.Option
 
 	if be.Statement.Consistency > cql.Any {

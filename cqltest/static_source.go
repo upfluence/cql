@@ -9,6 +9,8 @@ import (
 	"github.com/upfluence/cql/x/migration"
 )
 
+// StaticSource provides a simple migration source with hardcoded up and down migrations.
+// It is useful for testing migration logic without file system dependencies.
 type StaticSource struct {
 	MigrationUp   string
 	MigrationDown string

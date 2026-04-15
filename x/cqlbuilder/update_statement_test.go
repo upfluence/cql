@@ -23,9 +23,9 @@ func TestUpdateStatement(t *testing.T) {
 				},
 				WhereClause: Eq(Column("bar")),
 			},
-			vs:       map[string]interface{}{"fiz": 1, "buz": 2, "bar": 3},
+			vs:       map[string]any{"fiz": 1, "buz": 2, "bar": 3},
 			wantStmt: "UPDATE foo SET fiz = ?, buz = ? WHERE bar = ?",
-			wantArgs: []interface{}{1, 2, 3},
+			wantArgs: []any{1, 2, 3},
 		},
 		{
 			name: "complex lwt",
@@ -37,9 +37,9 @@ func TestUpdateStatement(t *testing.T) {
 				WhereClause: Eq(Column("bar")),
 				LWTClause:   PredicateLWTClause{Predicate: Eq(Column("buz"))},
 			},
-			vs:       map[string]interface{}{"fiz": 1, "buz": 2, "bar": 3},
+			vs:       map[string]any{"fiz": 1, "buz": 2, "bar": 3},
 			wantStmt: "UPDATE foo SET fiz = ? WHERE bar = ? IF buz = ?",
-			wantArgs: []interface{}{1, 3, 2},
+			wantArgs: []any{1, 3, 2},
 		},
 		{
 			name: "SettAdd",
@@ -50,9 +50,9 @@ func TestUpdateStatement(t *testing.T) {
 				},
 				WhereClause: In(Column("bar")),
 			},
-			vs:       map[string]interface{}{"fiz": []int{1}, "bar": []int{3, 4}},
+			vs:       map[string]any{"fiz": []int{1}, "bar": []int{3, 4}},
 			wantStmt: "UPDATE foo SET fiz = fiz + ? WHERE bar IN (?, ?)",
-			wantArgs: []interface{}{[]int{1}, 3, 4},
+			wantArgs: []any{[]int{1}, 3, 4},
 		},
 	} {
 		stc.assert(t)
@@ -84,14 +84,14 @@ func TestIntegrationSet(t *testing.T) {
 
 		err := ue.Exec(
 			context.Background(),
-			map[string]interface{}{"foo": "foo", "bar": []string{"foo"}},
+			map[string]any{"foo": "foo", "bar": []string{"foo"}},
 		)
 
 		assert.NoError(t, err)
 
 		err = ue.Exec(
 			context.Background(),
-			map[string]interface{}{"foo": "foo", "bar": []string{"foo"}},
+			map[string]any{"foo": "foo", "bar": []string{"foo"}},
 		)
 
 		assert.NoError(t, err)

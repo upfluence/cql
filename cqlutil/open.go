@@ -1,3 +1,4 @@
+// Package cqlutil provides utilities for opening and configuring CQL database connections.
 package cqlutil
 
 import (
@@ -75,6 +76,7 @@ func fetchString(env, fallback string) string {
 	return fallback
 }
 
+// Option configures the CQL database connection builder.
 type Option func(*builder)
 
 func Open(opts ...Option) (cql.DB, error) {

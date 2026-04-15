@@ -5,16 +5,17 @@ import (
 	"strings"
 )
 
+// QueryWriter extends io.Writer with the ability to add query arguments for prepared statements.
 type QueryWriter interface {
 	io.Writer
 
-	AddArg(interface{})
+	AddArg(any)
 }
 
 type queryWriter struct {
 	strings.Builder
 
-	args []interface{}
+	args []any
 }
 
-func (qw *queryWriter) AddArg(a interface{}) { qw.args = append(qw.args, a) }
+func (qw *queryWriter) AddArg(a any) { qw.args = append(qw.args, a) }

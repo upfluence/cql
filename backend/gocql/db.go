@@ -1,3 +1,4 @@
+// Package gocql provides an implementation of the cql.DB interface using the Apache Cassandra gocql driver.
 package gocql
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/upfluence/cql"
 )
 
+// DB is a Cassandra database implementation that wraps a gocql.Session.
+// It implements the cql.DB interface and translates operations to the underlying gocql driver.
 type DB struct {
 	sess *gocql.Session
 }
@@ -17,9 +20,9 @@ func NewDB(sess *gocql.Session) *DB {
 	return &DB{sess: sess}
 }
 
-func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query) *gocql.Query) {
+func trimValues(vs []any) ([]any, []func(*gocql.Query) *gocql.Query) {
 	var (
-		args []interface{}
+		args []any
 		fns  []func(*gocql.Query) *gocql.Query
 	)
 
@@ -41,7 +44,7 @@ func trimValues(vs []interface{}) ([]interface{}, []func(*gocql.Query) *gocql.Qu
 
 func (db *DB) Session() *gocql.Session { return db.sess }
 
-func (db *DB) query(stmt string, vs []interface{}) *gocql.Query {
+func (db *DB) query(stmt string, vs []any) *gocql.Query {
 	var (
 		vvs, fns = trimValues(vs)
 		q        = db.sess.Query(stmt, vvs...)
@@ -54,15 +57,15 @@ func (db *DB) query(stmt string, vs []interface{}) *gocql.Query {
 	return q
 }
 
-func (db *DB) Exec(ctx context.Context, stmt string, vs ...interface{}) error {
+func (db *DB) Exec(ctx context.Context, stmt string, vs ...any) error {
 	return db.query(stmt, vs).ExecContext(ctx)
 }
 
-func (db *DB) ExecCAS(ctx context.Context, stmt string, vs ...interface{}) cql.CASScanner {
+func (db *DB) ExecCAS(ctx context.Context, stmt string, vs ...any) cql.CASScanner {
 	return &scanner{sc: db.query(stmt, vs), ctx: ctx}
 }
 
-func (db *DB) QueryRow(ctx context.Context, stmt string, vs ...interface{}) cql.Scanner {
+func (db *DB) QueryRow(ctx context.Context, stmt string, vs ...any) cql.Scanner {
 	return &scanner{sc: db.query(stmt, vs), ctx: ctx}
 }
 
@@ -72,11 +75,11 @@ type scanner struct {
 	ctx context.Context
 }
 
-func (s *scanner) ScanCAS(vs ...interface{}) (bool, error) {
+func (s *scanner) ScanCAS(vs ...any) (bool, error) {
 	return s.sc.ScanCASContext(s.ctx, vs...)
 }
 
-func (s *scanner) Scan(vs ...interface{}) error {
+func (s *scanner) Scan(vs ...any) error {
 	if err := s.sc.ScanContext(s.ctx, vs...); !errors.Is(err, gocql.ErrNotFound) {
 		return err
 	}
@@ -88,7 +91,7 @@ type cursor struct {
 	*gocql.Iter
 }
 
-func (db *DB) Query(ctx context.Context, stmt string, vs ...interface{}) cql.Cursor {
+func (db *DB) Query(ctx context.Context, stmt string, vs ...any) cql.Cursor {
 	return cursor{db.query(stmt, vs).IterContext(ctx)}
 }
 
@@ -98,7 +101,7 @@ type batch struct {
 	ctx context.Context
 }
 
-func (b *batch) Query(stmt string, vs ...interface{}) {
+func (b *batch) Query(stmt string, vs ...any) {
 	b.Batch = b.Batch.Query(stmt, vs...)
 }
 

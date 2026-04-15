@@ -1,3 +1,5 @@
+// Package logger provides a logging middleware for CQL database operations.
+// It logs all queries, their parameters, duration, and results for debugging and monitoring.
 package logger
 
 import (
@@ -21,8 +23,9 @@ const (
 	Query    OpType = "Query"
 )
 
+// Logger is an interface for logging CQL operations with custom log destinations.
 type Logger interface {
-	Log(OpType, string, []interface{}, error, time.Duration, ...record.Field)
+	Log(OpType, string, []any, error, time.Duration, ...record.Field)
 }
 
 type simplifiedLogger struct {
@@ -30,7 +33,7 @@ type simplifiedLogger struct {
 	logger log.Logger
 }
 
-func (l *simplifiedLogger) Log(t OpType, q string, vs []interface{}, err error, d time.Duration, ofs ...record.Field) {
+func (l *simplifiedLogger) Log(t OpType, q string, vs []any, err error, d time.Duration, ofs ...record.Field) {
 	var (
 		i               int
 		withConsistency bool
@@ -89,20 +92,17 @@ func (f *factory) Wrap(db cql.DB) cql.DB {
 	return &DB{db: db, l: f.l}
 }
 
+// DB is a cql.DB wrapper that logs all database operations.
 type DB struct {
 	db cql.DB
 	l  Logger
 }
 
 func (db *DB) Unwrap() cql.DB {
-	if u, ok := db.db.(interface{ Unwrap() cql.DB }); ok {
-		return u.Unwrap()
-	}
-
 	return db.db
 }
 
-func trimValues(vs []interface{}) ([]interface{}, []record.Field) {
+func trimValues(vs []any) ([]any, []record.Field) {
 	var fs []record.Field
 
 	for _, v := range vs {
@@ -114,7 +114,7 @@ func trimValues(vs []interface{}) ([]interface{}, []record.Field) {
 	return vs, fs
 }
 
-func (db *DB) Exec(ctx context.Context, stmt string, vs ...interface{}) error {
+func (db *DB) Exec(ctx context.Context, stmt string, vs ...any) error {
 	t0 := time.Now()
 	err := db.db.Exec(ctx, stmt, vs...)
 
@@ -129,11 +129,11 @@ type casScanner struct {
 
 	l    Logger
 	stmt string
-	vs   []interface{}
+	vs   []any
 	t0   time.Time
 }
 
-func (csc casScanner) ScanCAS(vs ...interface{}) (bool, error) {
+func (csc casScanner) ScanCAS(vs ...any) (bool, error) {
 	ok, err := csc.CASScanner.ScanCAS(vs...)
 
 	vvs, fs := trimValues(csc.vs)
@@ -150,7 +150,7 @@ func (csc casScanner) ScanCAS(vs ...interface{}) (bool, error) {
 	return ok, err
 }
 
-func (db *DB) ExecCAS(ctx context.Context, stmt string, vs ...interface{}) cql.CASScanner {
+func (db *DB) ExecCAS(ctx context.Context, stmt string, vs ...any) cql.CASScanner {
 	t0 := time.Now()
 
 	sc := db.db.ExecCAS(ctx, stmt, vs...)
@@ -163,11 +163,11 @@ type scanner struct {
 
 	l    Logger
 	stmt string
-	vs   []interface{}
+	vs   []any
 	t0   time.Time
 }
 
-func (sc scanner) Scan(vs ...interface{}) error {
+func (sc scanner) Scan(vs ...any) error {
 	err := sc.Scanner.Scan(vs...)
 
 	vvs, fs := trimValues(sc.vs)
@@ -184,7 +184,7 @@ func (sc scanner) Scan(vs ...interface{}) error {
 	return err
 }
 
-func (db *DB) QueryRow(ctx context.Context, stmt string, vs ...interface{}) cql.Scanner {
+func (db *DB) QueryRow(ctx context.Context, stmt string, vs ...any) cql.Scanner {
 	t0 := time.Now()
 
 	sc := db.db.QueryRow(ctx, stmt, vs...)
@@ -197,13 +197,13 @@ type cursor struct {
 
 	l    Logger
 	stmt string
-	vs   []interface{}
+	vs   []any
 	t0   time.Time
 
 	scanned uint32
 }
 
-func (c *cursor) Scan(vs ...interface{}) bool {
+func (c *cursor) Scan(vs ...any) bool {
 	atomic.AddUint32(&c.scanned, 1)
 
 	return c.Cursor.Scan(vs...)
@@ -225,7 +225,7 @@ func (c *cursor) Close() error {
 	return err
 }
 
-func (db *DB) Query(ctx context.Context, stmt string, vs ...interface{}) cql.Cursor {
+func (db *DB) Query(ctx context.Context, stmt string, vs ...any) cql.Cursor {
 	t0 := time.Now()
 
 	c := db.db.Query(ctx, stmt, vs...)
@@ -242,7 +242,7 @@ type batch struct {
 	queries uint32
 }
 
-func (b *batch) Query(stmt string, vs ...interface{}) {
+func (b *batch) Query(stmt string, vs ...any) {
 	atomic.AddUint32(&b.queries, 1)
 
 	b.l.Log(Query, stmt, vs, nil, 0)
