@@ -10,7 +10,7 @@ import (
 	"github.com/upfluence/errors"
 )
 
-var ErrNoRows = errors.New("No rows found")
+var ErrNoRows = errors.New("no rows found")
 
 // BatchType represents the type of batch operation to perform in Cassandra.
 // Batches allow multiple mutations to be executed atomically.

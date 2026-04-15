@@ -56,10 +56,12 @@ func (ds DeleteStatement) buildQuery(qvs map[string]any) (string, []any, error) 
 
 	DMLOptions{Timestamp: ds.Timestamp}.writeTo(&qw)
 
-	qw.WriteString("WHERE ")
+	if ds.WhereClause != nil {
+		qw.WriteString("WHERE ")
 
-	if err := ds.WhereClause.WriteTo(&qw, qvs); err != nil {
-		return "", nil, err
+		if err := ds.WhereClause.WriteTo(&qw, qvs); err != nil {
+			return "", nil, err
+		}
 	}
 
 	if lc := ds.LWTClause; lc != nil {

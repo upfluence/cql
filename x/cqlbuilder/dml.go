@@ -28,11 +28,7 @@ func (do DMLOptions) writeTo(w io.Writer) {
 	}
 
 	if !do.Timestamp.IsZero() {
-		fmt.Fprintf(
-			w,
-			" TIMESTAMP %d",
-			do.Timestamp.Unix()*1000+do.Timestamp.UnixNano()/1000000,
-		)
+		fmt.Fprintf(w, " TIMESTAMP %d", do.Timestamp.UnixMicro())
 	}
 }
 

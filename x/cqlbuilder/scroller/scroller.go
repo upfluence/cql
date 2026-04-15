@@ -95,9 +95,14 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 	)
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		cur := q.Query(ctx, map[string]any{"token": nextToken})
 		ok := true
 		hasResult := false
+		pageMaxToken := nextToken
 
 		for ok {
 			var sc = shadowScanner{cur: cur}
@@ -113,8 +118,8 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 			if ok {
 				hasResult = true
 
-				if sc.token > nextToken {
-					nextToken = sc.token
+				if sc.token > pageMaxToken {
+					pageMaxToken = sc.token
 				}
 			}
 		}
@@ -129,8 +134,10 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 			stmt.EndOfPageHandler()
 		}
 
-		if !hasResult {
+		if !hasResult || pageMaxToken == nextToken {
 			return nil
 		}
+
+		nextToken = pageMaxToken
 	}
 }

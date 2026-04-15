@@ -124,10 +124,12 @@ func (us UpdateStatement) buildQuery(qvs map[string]any) (string, []any, error) 
 		}
 	}
 
-	qw.WriteString(" WHERE ")
+	if us.WhereClause != nil {
+		qw.WriteString(" WHERE ")
 
-	if err := us.WhereClause.WriteTo(&qw, qvs); err != nil {
-		return "", nil, err
+		if err := us.WhereClause.WriteTo(&qw, qvs); err != nil {
+			return "", nil, err
+		}
 	}
 
 	if lc := us.LWTClause; lc != nil {
