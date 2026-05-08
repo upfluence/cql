@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/upfluence/cql"
 	"github.com/upfluence/cql/x/cqlbuilder"
 )
 
@@ -14,6 +15,7 @@ type Statement struct {
 
 	PrimaryKeys []string
 	Fields      []cqlbuilder.Marker
+	Consistency cql.Consistency
 
 	ScrollSize       int
 	ErrorHandler     func(error) error
@@ -90,6 +92,7 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 				SelectClauses: stmt.selectClauses(),
 				WhereClause:   stmt.whereClause(),
 				Limit:         cqlbuilder.NullableInt{Valid: true, Int: stmt.limit()},
+				Consistency:   stmt.Consistency,
 			},
 		)
 	)
