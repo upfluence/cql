@@ -5,7 +5,7 @@ go 1.24
 toolchain go1.24.0
 
 require (
-	github.com/apache/cassandra-gocql-driver/v2 v2.0.0
+	github.com/apache/cassandra-gocql-driver/v2 v2.1.1
 	github.com/stretchr/testify v1.11.1
 	github.com/upfluence/errors v0.2.17
 	github.com/upfluence/log v0.0.6

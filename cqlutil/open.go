@@ -16,6 +16,7 @@ var NoGossip = WithCQLOption(
 	func(cc *gocql.ClusterConfig) {
 		cc.DisableInitialHostLookup = true
 		cc.IgnorePeerAddr = true
+		cc.PoolConfig.HostSelectionPolicy = gocql.RoundRobinHostPolicy()
 	},
 )
 
@@ -53,6 +54,10 @@ func Port(p int) Option {
 
 func RetryPolicy(p gocql.RetryPolicy) Option {
 	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.RetryPolicy = p })
+}
+
+func HostSelectionPolicy(p gocql.HostSelectionPolicy) Option {
+	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.PoolConfig.HostSelectionPolicy = p })
 }
 
 type builder struct {
@@ -94,6 +99,9 @@ func Open(opts ...Option) (cql.DB, error) {
 				cc.SerialConsistency = gocql.LocalSerial
 				cc.Timeout = 15 * time.Second
 				cc.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 3}
+				cc.PoolConfig.HostSelectionPolicy = gocql.TokenAwareHostPolicy(
+					gocql.RoundRobinHostPolicy(),
+				)
 			},
 		},
 	}
