@@ -39,6 +39,10 @@ func Consistency(c gocql.Consistency) Option {
 	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.Consistency = c })
 }
 
+func SerialConsistency(c gocql.SerialConsistency) Option {
+	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.SerialConsistency = c })
+}
+
 func Timeout(t time.Duration) Option {
 	return WithCQLOption(func(cc *gocql.ClusterConfig) { cc.Timeout = t })
 }
@@ -85,8 +89,9 @@ func Open(opts ...Option) (cql.DB, error) {
 		cqlOptions: []func(*gocql.ClusterConfig){
 			func(cc *gocql.ClusterConfig) {
 				cc.Keyspace = fetchString("CASSANDRA_KEYSPACE", "test")
-				cc.ProtoVersion = 3
+				cc.ProtoVersion = 4
 				cc.Consistency = gocql.Quorum
+				cc.SerialConsistency = gocql.LocalSerial
 				cc.Timeout = 15 * time.Second
 				cc.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 3}
 			},
