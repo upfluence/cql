@@ -94,7 +94,6 @@ func Open(opts ...Option) (cql.DB, error) {
 		cqlOptions: []func(*gocql.ClusterConfig){
 			func(cc *gocql.ClusterConfig) {
 				cc.Keyspace = fetchString("CASSANDRA_KEYSPACE", "test")
-				cc.ProtoVersion = 4
 				cc.Consistency = gocql.Quorum
 				cc.SerialConsistency = gocql.LocalSerial
 				cc.Timeout = 15 * time.Second
