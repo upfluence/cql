@@ -27,12 +27,14 @@ type NullableInt struct {
 	Valid bool
 }
 
-// SelectStatement represents a CQL SELECT query with WHERE, ORDER BY, and LIMIT clauses.
+// SelectStatement represents a CQL SELECT query with WHERE, GROUP BY, ORDER BY,
+// and LIMIT clauses.
 type SelectStatement struct {
 	Table string
 
 	SelectClauses []Marker
 	WhereClause   PredicateClause
+	GroupByClause []Marker
 	OrderByClause OrderByClause
 
 	Limit NullableInt
@@ -70,6 +72,16 @@ func (ss SelectStatement) buildQuery(qvs map[string]any) (string, []any, error) 
 		if err := ss.WhereClause.WriteTo(&qw, qvs); err != nil {
 			return "", nil, err
 		}
+	}
+
+	if len(ss.GroupByClause) > 0 {
+		gs := make([]string, len(ss.GroupByClause))
+
+		for i, m := range ss.GroupByClause {
+			gs[i] = m.ToCQL()
+		}
+
+		fmt.Fprintf(&qw, " GROUP BY %s", strings.Join(gs, ", "))
 	}
 
 	if obc := ss.OrderByClause; obc.Field != nil {

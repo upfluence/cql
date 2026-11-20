@@ -27,6 +27,23 @@ func TestSelectStatement(t *testing.T) {
 			wantStmt: "SELECT fiz, buz FROM foo WHERE 1 = 2 LIMIT 123",
 		},
 		{
+			name: "group by",
+			stmt: SelectStatement{
+				Table: "foo",
+				SelectClauses: []Marker{
+					Column("fiz"),
+					CQLExpression("count", "count(*)"),
+				},
+				WhereClause:   Eq(Column("bar")),
+				GroupByClause: []Marker{Column("fiz"), Column("buz")},
+				OrderByClause: OrderByClause{Field: Column("fiz"), Direction: Desc},
+				Limit:         NullableInt{Valid: true, Int: 10},
+			},
+			vs:       map[string]any{"bar": 3},
+			wantStmt: "SELECT fiz, count(*) FROM foo WHERE bar = ? GROUP BY fiz, buz ORDER BY fiz DESC LIMIT 10",
+			wantArgs: []any{3},
+		},
+		{
 			name: "basic and",
 			stmt: SelectStatement{
 				Table:         "foo",
