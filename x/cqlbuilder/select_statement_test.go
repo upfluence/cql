@@ -27,6 +27,18 @@ func TestSelectStatement(t *testing.T) {
 			wantStmt: "SELECT fiz, buz FROM foo WHERE 1 = 2 LIMIT 123",
 		},
 		{
+			name: "distinct",
+			stmt: SelectStatement{
+				Table:         "foo",
+				Distinct:      true,
+				SelectClauses: []Marker{Column("fiz")},
+				WhereClause:   Gt(CQLExpression("token", "TOKEN(fiz)")),
+			},
+			vs:       map[string]any{"token": 3},
+			wantStmt: "SELECT DISTINCT fiz FROM foo WHERE TOKEN(fiz) > ?",
+			wantArgs: []any{3},
+		},
+		{
 			name: "group by",
 			stmt: SelectStatement{
 				Table: "foo",

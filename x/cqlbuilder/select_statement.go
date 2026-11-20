@@ -32,6 +32,9 @@ type NullableInt struct {
 type SelectStatement struct {
 	Table string
 
+	// Distinct only returns one row per partition, the select clauses must
+	// then only contain partition key or static columns.
+	Distinct      bool
 	SelectClauses []Marker
 	WhereClause   PredicateClause
 	GroupByClause []Marker
@@ -65,7 +68,13 @@ func (ss SelectStatement) buildQuery(qvs map[string]any) (string, []any, error) 
 		ks[i] = f.ToCQL()
 	}
 
-	fmt.Fprintf(&qw, "SELECT %s FROM %s", strings.Join(ks, ", "), ss.Table)
+	qw.WriteString("SELECT ")
+
+	if ss.Distinct {
+		qw.WriteString("DISTINCT ")
+	}
+
+	fmt.Fprintf(&qw, "%s FROM %s", strings.Join(ks, ", "), ss.Table)
 
 	if ss.WhereClause != nil {
 		qw.WriteString(" WHERE ")
