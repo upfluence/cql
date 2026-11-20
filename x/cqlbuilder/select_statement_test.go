@@ -44,6 +44,19 @@ func TestSelectStatement(t *testing.T) {
 			wantArgs: []any{3},
 		},
 		{
+			name: "per partition limit",
+			stmt: SelectStatement{
+				Table:             "foo",
+				SelectClauses:     []Marker{Column("fiz"), Column("buz")},
+				WhereClause:       In(Column("bar")),
+				PerPartitionLimit: NullableInt{Valid: true, Int: 1},
+				Limit:             NullableInt{Valid: true, Int: 10},
+			},
+			vs:       map[string]any{"bar": []int{1, 2}},
+			wantStmt: "SELECT fiz, buz FROM foo WHERE bar IN (?, ?) PER PARTITION LIMIT 1 LIMIT 10",
+			wantArgs: []any{1, 2},
+		},
+		{
 			name: "basic and",
 			stmt: SelectStatement{
 				Table:         "foo",

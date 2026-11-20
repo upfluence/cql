@@ -28,7 +28,7 @@ type NullableInt struct {
 }
 
 // SelectStatement represents a CQL SELECT query with WHERE, GROUP BY, ORDER BY,
-// and LIMIT clauses.
+// PER PARTITION LIMIT, and LIMIT clauses.
 type SelectStatement struct {
 	Table string
 
@@ -37,7 +37,8 @@ type SelectStatement struct {
 	GroupByClause []Marker
 	OrderByClause OrderByClause
 
-	Limit NullableInt
+	PerPartitionLimit NullableInt
+	Limit             NullableInt
 
 	Consistency    cql.Consistency
 	AllowFiltering bool
@@ -86,6 +87,10 @@ func (ss SelectStatement) buildQuery(qvs map[string]any) (string, []any, error) 
 
 	if obc := ss.OrderByClause; obc.Field != nil {
 		fmt.Fprintf(&qw, " ORDER BY %s %s", obc.Field.ToCQL(), obc.Direction)
+	}
+
+	if ss.PerPartitionLimit.Valid {
+		fmt.Fprintf(&qw, " PER PARTITION LIMIT %d", ss.PerPartitionLimit.Int)
 	}
 
 	if ss.Limit.Valid {
