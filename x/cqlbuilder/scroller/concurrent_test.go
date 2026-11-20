@@ -19,7 +19,7 @@ var errClose = errors.New("close failed")
 type collector struct {
 	mu sync.Mutex
 
-	rows   []scrolledRow
+	rows   []row
 	closes int
 }
 
@@ -29,7 +29,7 @@ func (c *collector) scanner(closeErr error) RangeScanner {
 
 type rangeCollector struct {
 	c        *collector
-	rows     []scrolledRow
+	rows     []row
 	closeErr error
 }
 
@@ -73,27 +73,27 @@ func TestConcurrentScroll(t *testing.T) {
 			name       string
 			haveStmt   Statement
 			haveOpts   []ConcurrentOption
-			wantRows   []scrolledRow
+			wantRows   []row
 			wantCloses int
 		}{
 			{
 				name:       "default options",
 				haveStmt:   rowStatement(nil),
-				wantRows:   allRows(),
+				wantRows:   clusteringRows(all),
 				wantCloses: 4 * runtime.GOMAXPROCS(0),
 			},
 			{
 				name:       "splits and concurrency",
 				haveStmt:   rowStatement(nil),
 				haveOpts:   []ConcurrentOption{WithSplits(8), WithConcurrency(3)},
-				wantRows:   allRows(),
+				wantRows:   clusteringRows(all),
 				wantCloses: 8,
 			},
 			{
 				name:       "within a token range",
 				haveStmt:   rowStatement(&halfRange),
 				haveOpts:   []ConcurrentOption{WithSplits(4), WithConcurrency(0)},
-				wantRows:   scrollRows(t, db, Statement{ScrollSize: NoLimit, Range: &halfRange}),
+				wantRows:   scrollRows(t, db, rowStatement(nil), []TokenRange{halfRange}),
 				wantCloses: 4,
 			},
 		} {
@@ -147,7 +147,7 @@ func TestConcurrentScrollRangeError(t *testing.T) {
 		require.ErrorAs(t, err, &re)
 		assert.Equal(t, failedRange, re.Range)
 		require.ErrorIs(t, err, errClose)
-		assert.ElementsMatch(t, allRows(), c.rows)
+		assert.ElementsMatch(t, clusteringRows(all), c.rows)
 		assert.Equal(t, 8, c.closes)
 	})
 }

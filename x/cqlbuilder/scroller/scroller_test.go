@@ -15,11 +15,9 @@ import (
 )
 
 const (
-	partitions        = 20
-	rowsPerPartitions = 3
-)
+	partitions       = 20
+	rowsPerPartition = 3
 
-const (
 	table       = "scroll"
 	pkColumn    = "pk"
 	otherColumn = "other"
@@ -27,9 +25,11 @@ const (
 
 var partitionKey = []string{pkColumn, otherColumn}
 
-type partition struct {
+// row is a scrolled row, the columns which are not selected are left empty.
+type row struct {
 	PK     int
 	Other  int
+	C      int
 	Static string
 }
 
@@ -53,7 +53,7 @@ func integrationTest(t *testing.T, fn func(*testing.T, cql.DB)) {
 		}),
 	).Run(t, func(t *testing.T, db cql.DB) {
 		for i := range partitions {
-			for c := range rowsPerPartitions {
+			for c := range rowsPerPartition {
 				require.NoError(
 					t,
 					db.Exec(
@@ -72,221 +72,199 @@ func integrationTest(t *testing.T, fn func(*testing.T, cql.DB)) {
 	})
 }
 
-func allPartitions(filter func(partition) bool) []partition {
-	var ps []partition
+// partitionRows returns one row per partition, as scrolled with Distinct.
+func partitionRows(filter func(row) bool) []row {
+	var rs []row
 
 	for i := range partitions {
-		if p := (partition{PK: i, Other: i % 2}); filter(p) {
-			ps = append(ps, p)
+		if r := (row{PK: i, Other: i % 2}); filter(r) {
+			rs = append(rs, r)
 		}
 	}
 
-	return ps
+	return rs
 }
 
-func withStatic(ps []partition) []partition {
-	for i := range ps {
-		ps[i].Static = fmt.Sprintf("p%d", ps[i].PK)
+// clusteringRows returns every row of the table, as scrolled with the c column.
+func clusteringRows(filter func(row) bool) []row {
+	var rs []row
+
+	for i := range partitions {
+		for c := range rowsPerPartition {
+			if r := (row{PK: i, Other: i % 2, C: c}); filter(r) {
+				rs = append(rs, r)
+			}
+		}
 	}
 
-	return ps
+	return rs
 }
 
-func scrollPartitions(t *testing.T, db cql.DB, stmt Statement) []partition {
-	t.Helper()
+func withStatic(rs []row) []row {
+	for i := range rs {
+		rs[i].Static = fmt.Sprintf("p%d", rs[i].PK)
+	}
 
-	var (
-		ps []partition
-		s  = Scroller{QueryBuilder: cqlbuilder.QueryBuilder{DB: db}}
-	)
+	return rs
+}
 
-	err := s.Scroll(
-		context.Background(),
-		stmt,
-		func(sc cqlbuilder.Scanner) error {
-			var p partition
+func all(row) bool { return true }
 
-			err := sc.Scan(
-				map[string]any{pkColumn: &p.PK, otherColumn: &p.Other, "st": &p.Static},
-			)
+func scanRow(sc cqlbuilder.Scanner) (row, error) {
+	var r row
 
-			if err != nil {
-				return err
-			}
-
-			ps = append(ps, p)
-
-			return nil
+	err := sc.Scan(
+		map[string]any{
+			pkColumn:    &r.PK,
+			otherColumn: &r.Other,
+			"c":         &r.C,
+			"st":        &r.Static,
 		},
 	)
 
-	require.NoError(t, err)
+	return r, err
+}
 
-	return ps
+// scrollRows scrolls stmt on the test table once per range, or once on its own
+// range when there is none.
+func scrollRows(t *testing.T, db cql.DB, stmt Statement, ranges []TokenRange) []row {
+	t.Helper()
+
+	stmt.Table = table
+	stmt.PrimaryKeys = partitionKey
+
+	var (
+		rs []row
+		s  = Scroller{QueryBuilder: cqlbuilder.QueryBuilder{DB: db}}
+
+		stmts = []Statement{stmt}
+	)
+
+	if len(ranges) > 0 {
+		stmts = make([]Statement, len(ranges))
+
+		for i := range ranges {
+			stmts[i] = stmt
+			stmts[i].Range = &ranges[i]
+		}
+	}
+
+	for _, stmt := range stmts {
+		err := s.Scroll(
+			context.Background(),
+			stmt,
+			func(sc cqlbuilder.Scanner) error {
+				r, err := scanRow(sc)
+
+				if err != nil {
+					return err
+				}
+
+				rs = append(rs, r)
+
+				return nil
+			},
+		)
+
+		require.NoError(t, err)
+	}
+
+	return rs
+}
+
+func wantRows(want []row) func(*testing.T, []row) {
+	return func(t *testing.T, got []row) {
+		t.Helper()
+
+		assert.ElementsMatch(t, want, got)
+	}
 }
 
 func TestScroll(t *testing.T) {
 	integrationTest(t, func(t *testing.T, db cql.DB) {
 		for _, tt := range []struct {
-			name string
-			stmt Statement
-			want []partition
+			name       string
+			haveStmt   Statement
+			haveRanges []TokenRange
+			assertRows func(*testing.T, []row)
 		}{
 			{
 				name: "distinct partitions over many pages",
-				stmt: Statement{
-					Table:       table,
-					PrimaryKeys: partitionKey,
-					Distinct:    true,
-					ScrollSize:  3,
+				haveStmt: Statement{
+					Distinct:   true,
+					ScrollSize: 3,
 				},
-				want: allPartitions(func(partition) bool { return true }),
+				assertRows: wantRows(partitionRows(all)),
 			},
 			{
 				name: "distinct partitions with a static column",
-				stmt: Statement{
-					Table:       table,
-					PrimaryKeys: partitionKey,
-					Fields:      []cqlbuilder.Marker{cqlbuilder.Column("st")},
-					Distinct:    true,
-					ScrollSize:  7,
+				haveStmt: Statement{
+					Fields:     []cqlbuilder.Marker{cqlbuilder.Column("st")},
+					Distinct:   true,
+					ScrollSize: 7,
 				},
-				want: withStatic(allPartitions(func(partition) bool { return true })),
+				assertRows: wantRows(withStatic(partitionRows(all))),
 			},
 			{
 				name: "distinct partitions filtered on a partition key column",
-				stmt: Statement{
-					Table:          table,
-					PrimaryKeys:    partitionKey,
+				haveStmt: Statement{
 					Distinct:       true,
 					ScrollSize:     3,
 					WhereClause:    cqlbuilder.Eq(cqlbuilder.Column(otherColumn)),
 					Values:         map[string]any{otherColumn: 1},
 					AllowFiltering: true,
 				},
-				want: allPartitions(func(p partition) bool { return p.Other == 1 }),
+				assertRows: wantRows(partitionRows(func(r row) bool { return r.Other == 1 })),
+			},
+			{
+				name: "distinct partitions within token ranges",
+				haveStmt: Statement{
+					Distinct:   true,
+					ScrollSize: 2,
+				},
+				haveRanges: SplitTokenRange(4),
+				assertRows: wantRows(partitionRows(all)),
 			},
 			{
 				name: "rows filtered on a clustering column",
-				stmt: Statement{
-					Table:          table,
-					PrimaryKeys:    partitionKey,
-					ScrollSize:     3,
+				haveStmt: Statement{
+					Fields:         []cqlbuilder.Marker{cqlbuilder.Column("c")},
 					WhereClause:    cqlbuilder.StaticEq(cqlbuilder.Column("c"), 1),
 					AllowFiltering: true,
 				},
-				want: allPartitions(func(partition) bool { return true }),
+				assertRows: wantRows(clusteringRows(func(r row) bool { return r.C == 1 })),
+			},
+			{
+				name: "rows with a page limit skip the end of partitions",
+				haveStmt: Statement{
+					Fields:     []cqlbuilder.Marker{cqlbuilder.Column("c")},
+					ScrollSize: 4,
+				},
+				assertRows: func(t *testing.T, got []row) {
+					assert.Less(t, len(got), len(clusteringRows(all)))
+				},
+			},
+			{
+				name: "rows without limit",
+				haveStmt: Statement{
+					Fields:     []cqlbuilder.Marker{cqlbuilder.Column("c")},
+					ScrollSize: NoLimit,
+				},
+				assertRows: wantRows(clusteringRows(all)),
+			},
+			{
+				name: "rows without limit within token ranges",
+				haveStmt: Statement{
+					Fields:     []cqlbuilder.Marker{cqlbuilder.Column("c")},
+					ScrollSize: NoLimit,
+				},
+				haveRanges: SplitTokenRange(4),
+				assertRows: wantRows(clusteringRows(all)),
 			},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
-				assert.ElementsMatch(t, tt.want, scrollPartitions(t, db, tt.stmt))
+				tt.assertRows(t, scrollRows(t, db, tt.haveStmt, tt.haveRanges))
 			})
 		}
 	})
-}
-
-func TestScrollTokenRanges(t *testing.T) {
-	integrationTest(t, func(t *testing.T, db cql.DB) {
-		var ps []partition
-
-		for _, tr := range SplitTokenRange(4) {
-			ps = append(
-				ps,
-				scrollPartitions(
-					t,
-					db,
-					Statement{
-						Table:       table,
-						PrimaryKeys: partitionKey,
-						Distinct:    true,
-						ScrollSize:  2,
-						Range:       &tr,
-					},
-				)...,
-			)
-		}
-
-		assert.ElementsMatch(t, allPartitions(func(partition) bool { return true }), ps)
-	})
-}
-
-type scrolledRow struct {
-	PK    int
-	Other int
-	C     int
-}
-
-func allRows() []scrolledRow {
-	var rs []scrolledRow
-
-	for i := range partitions {
-		for c := range rowsPerPartitions {
-			rs = append(rs, scrolledRow{PK: i, Other: i % 2, C: c})
-		}
-	}
-
-	return rs
-}
-
-func scrollRows(t *testing.T, db cql.DB, stmt Statement) []scrolledRow {
-	t.Helper()
-
-	var (
-		rs []scrolledRow
-		s  = Scroller{QueryBuilder: cqlbuilder.QueryBuilder{DB: db}}
-	)
-
-	stmt.Table = table
-	stmt.PrimaryKeys = partitionKey
-	stmt.Fields = []cqlbuilder.Marker{cqlbuilder.Column("c")}
-
-	err := s.Scroll(
-		context.Background(),
-		stmt,
-		func(sc cqlbuilder.Scanner) error {
-			r, err := scanRow(sc)
-
-			if err != nil {
-				return err
-			}
-
-			rs = append(rs, r)
-
-			return nil
-		},
-	)
-
-	require.NoError(t, err)
-
-	return rs
-}
-
-func TestScrollRows(t *testing.T) {
-	integrationTest(t, func(t *testing.T, db cql.DB) {
-		t.Run("page limit skips the end of partitions", func(t *testing.T) {
-			assert.Less(t, len(scrollRows(t, db, Statement{ScrollSize: 4})), len(allRows()))
-		})
-
-		t.Run("no limit", func(t *testing.T) {
-			assert.ElementsMatch(t, allRows(), scrollRows(t, db, Statement{ScrollSize: NoLimit}))
-		})
-
-		t.Run("no limit within token ranges", func(t *testing.T) {
-			var rs []scrolledRow
-
-			for _, tr := range SplitTokenRange(4) {
-				rs = append(rs, scrollRows(t, db, Statement{ScrollSize: NoLimit, Range: &tr})...)
-			}
-
-			assert.ElementsMatch(t, allRows(), rs)
-		})
-	})
-}
-
-func scanRow(sc cqlbuilder.Scanner) (scrolledRow, error) {
-	var r scrolledRow
-
-	err := sc.Scan(map[string]any{pkColumn: &r.PK, otherColumn: &r.Other, "c": &r.C})
-
-	return r, err
 }
