@@ -203,3 +203,78 @@ func TestScrollTokenRanges(t *testing.T) {
 		assert.ElementsMatch(t, allPartitions(func(partition) bool { return true }), ps)
 	})
 }
+
+type scrolledRow struct {
+	PK    int
+	Other int
+	C     int
+}
+
+func allRows() []scrolledRow {
+	var rs []scrolledRow
+
+	for i := range partitions {
+		for c := range rowsPerPartitions {
+			rs = append(rs, scrolledRow{PK: i, Other: i % 2, C: c})
+		}
+	}
+
+	return rs
+}
+
+func scrollRows(t *testing.T, db cql.DB, stmt Statement) []scrolledRow {
+	t.Helper()
+
+	var (
+		rs []scrolledRow
+		s  = Scroller{QueryBuilder: cqlbuilder.QueryBuilder{DB: db}}
+	)
+
+	stmt.Table = "scroll"
+	stmt.PrimaryKeys = partitionKey
+	stmt.Fields = []cqlbuilder.Marker{cqlbuilder.Column("c")}
+
+	err := s.Scroll(
+		context.Background(),
+		stmt,
+		func(sc cqlbuilder.Scanner) error {
+			var r scrolledRow
+
+			err := sc.Scan(map[string]any{"pk": &r.PK, "other": &r.Other, "c": &r.C})
+
+			if err != nil {
+				return err
+			}
+
+			rs = append(rs, r)
+
+			return nil
+		},
+	)
+
+	require.NoError(t, err)
+
+	return rs
+}
+
+func TestScrollRows(t *testing.T) {
+	integrationTest(t, func(t *testing.T, db cql.DB) {
+		t.Run("page limit skips the end of partitions", func(t *testing.T) {
+			assert.Less(t, len(scrollRows(t, db, Statement{ScrollSize: 4})), len(allRows()))
+		})
+
+		t.Run("no limit", func(t *testing.T) {
+			assert.ElementsMatch(t, allRows(), scrollRows(t, db, Statement{ScrollSize: NoLimit}))
+		})
+
+		t.Run("no limit within token ranges", func(t *testing.T) {
+			var rs []scrolledRow
+
+			for _, tr := range SplitTokenRange(4) {
+				rs = append(rs, scrollRows(t, db, Statement{ScrollSize: NoLimit, Range: &tr})...)
+			}
+
+			assert.ElementsMatch(t, allRows(), rs)
+		})
+	})
+}

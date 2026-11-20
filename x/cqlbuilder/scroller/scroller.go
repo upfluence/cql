@@ -10,9 +10,13 @@ import (
 	"github.com/upfluence/cql/x/cqlbuilder"
 )
 
+// NoLimit scrolls without a page limit, see Statement.ScrollSize.
+const NoLimit = -1
+
 // Statement scrolls a table by token. PrimaryKeys are the partition key
-// columns. A page starts after the last token of the previous one: without
-// Distinct, the remaining rows of a partition overlapping two pages are skipped.
+// columns. A page starts after the last token of the previous one: unless
+// Distinct or NoLimit is used, the remaining rows of a partition overlapping two
+// pages are skipped.
 type Statement struct {
 	Table string
 
@@ -35,6 +39,9 @@ type Statement struct {
 	// is scrolled when nil. The "token_to" binding is reserved.
 	Range *TokenRange
 
+	// ScrollSize is the number of rows per page, 2048 when zero. With NoLimit,
+	// a page is a single query paged by the driver: the rows of a partition
+	// are then never skipped.
 	ScrollSize       int
 	ErrorHandler     func(error) error
 	EndOfPageHandler func()
@@ -111,12 +118,15 @@ func (s *Statement) handleError(err error) error {
 	return err
 }
 
-func (s *Statement) limit() int {
-	if s.ScrollSize > 0 {
-		return s.ScrollSize
+func (s *Statement) limit() cqlbuilder.NullableInt {
+	switch {
+	case s.ScrollSize < 0:
+		return cqlbuilder.NullableInt{}
+	case s.ScrollSize > 0:
+		return cqlbuilder.NullableInt{Valid: true, Int: s.ScrollSize}
+	default:
+		return cqlbuilder.NullableInt{Valid: true, Int: 2048}
 	}
-
-	return 2048
 }
 
 type shadowScanner struct {
@@ -154,7 +164,7 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 				Distinct:       stmt.Distinct,
 				SelectClauses:  stmt.selectClauses(),
 				WhereClause:    stmt.whereClause(),
-				Limit:          cqlbuilder.NullableInt{Valid: true, Int: stmt.limit()},
+				Limit:          stmt.limit(),
 				Consistency:    stmt.Consistency,
 				AllowFiltering: stmt.AllowFiltering,
 			},
