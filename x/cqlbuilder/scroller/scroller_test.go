@@ -178,3 +178,28 @@ func TestScroll(t *testing.T) {
 		}
 	})
 }
+
+func TestScrollTokenRanges(t *testing.T) {
+	integrationTest(t, func(t *testing.T, db cql.DB) {
+		var ps []partition
+
+		for _, tr := range SplitTokenRange(4) {
+			ps = append(
+				ps,
+				scrollPartitions(
+					t,
+					db,
+					Statement{
+						Table:       "scroll",
+						PrimaryKeys: partitionKey,
+						Distinct:    true,
+						ScrollSize:  2,
+						Range:       &tr,
+					},
+				)...,
+			)
+		}
+
+		assert.ElementsMatch(t, allPartitions(func(partition) bool { return true }), ps)
+	})
+}

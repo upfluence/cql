@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"maps"
-	"math"
 	"strings"
 
 	"github.com/upfluence/cql"
@@ -32,13 +31,33 @@ type Statement struct {
 	Values         map[string]any
 	AllowFiltering bool
 
+	// Range restricts the scroll to a range of the token ring, the whole ring
+	// is scrolled when nil. The "token_to" binding is reserved.
+	Range *TokenRange
+
 	ScrollSize       int
 	ErrorHandler     func(error) error
 	EndOfPageHandler func()
 }
 
 func (s *Statement) tokenMarker() cqlbuilder.Marker {
-	return cqlbuilder.CQLExpression("token", "TOKEN("+strings.Join(s.PrimaryKeys, ", ")+")")
+	return cqlbuilder.CQLExpression("token", s.tokenExpression())
+}
+
+func (s *Statement) upperTokenMarker() cqlbuilder.Marker {
+	return cqlbuilder.CQLExpression("token_to", s.tokenExpression())
+}
+
+func (s *Statement) tokenExpression() string {
+	return "TOKEN(" + strings.Join(s.PrimaryKeys, ", ") + ")"
+}
+
+func (s *Statement) tokenRange() TokenRange {
+	if s.Range == nil {
+		return FullTokenRange
+	}
+
+	return *s.Range
 }
 
 func (s *Statement) selectClauses() []cqlbuilder.Marker {
@@ -54,20 +73,32 @@ func (s *Statement) selectClauses() []cqlbuilder.Marker {
 }
 
 func (s *Statement) whereClause() cqlbuilder.PredicateClause {
-	var pc = cqlbuilder.Gt(s.tokenMarker())
+	var pcs = []cqlbuilder.PredicateClause{cqlbuilder.Gt(s.tokenMarker())}
 
-	if s.WhereClause == nil {
-		return pc
+	if s.Range != nil {
+		pcs = append(pcs, cqlbuilder.Lte(s.upperTokenMarker()))
 	}
 
-	return cqlbuilder.And(pc, s.WhereClause)
+	if s.WhereClause != nil {
+		pcs = append(pcs, s.WhereClause)
+	}
+
+	if len(pcs) == 1 {
+		return pcs[0]
+	}
+
+	return cqlbuilder.And(pcs...)
 }
 
 func (s *Statement) values(token int64) map[string]any {
-	var vs = make(map[string]any, len(s.Values)+1)
+	var vs = make(map[string]any, len(s.Values)+2)
 
 	maps.Copy(vs, s.Values)
 	vs["token"] = token
+
+	if s.Range != nil {
+		vs["token_to"] = s.Range.To
+	}
 
 	return vs
 }
@@ -115,8 +146,9 @@ type Scroller struct {
 
 func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlbuilder.Scanner) error) error {
 	var (
-		nextToken = int64(math.MinInt64)
-		q         = s.QueryBuilder.PrepareSelect(
+		tokenRange = stmt.tokenRange()
+		nextToken  = tokenRange.From
+		q          = s.QueryBuilder.PrepareSelect(
 			cqlbuilder.SelectStatement{
 				Table:          stmt.Table,
 				Distinct:       stmt.Distinct,
@@ -169,7 +201,7 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 			stmt.EndOfPageHandler()
 		}
 
-		if !hasResult || pageMaxToken == nextToken {
+		if !hasResult || pageMaxToken == nextToken || pageMaxToken >= tokenRange.To {
 			return nil
 		}
 
