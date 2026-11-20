@@ -19,7 +19,13 @@ const (
 	rowsPerPartitions = 3
 )
 
-var partitionKey = []string{"pk", "other"}
+const (
+	table       = "scroll"
+	pkColumn    = "pk"
+	otherColumn = "other"
+)
+
+var partitionKey = []string{pkColumn, otherColumn}
 
 type partition struct {
 	PK     int
@@ -101,7 +107,7 @@ func scrollPartitions(t *testing.T, db cql.DB, stmt Statement) []partition {
 			var p partition
 
 			err := sc.Scan(
-				map[string]any{"pk": &p.PK, "other": &p.Other, "st": &p.Static},
+				map[string]any{pkColumn: &p.PK, otherColumn: &p.Other, "st": &p.Static},
 			)
 
 			if err != nil {
@@ -129,7 +135,7 @@ func TestScroll(t *testing.T) {
 			{
 				name: "distinct partitions over many pages",
 				stmt: Statement{
-					Table:       "scroll",
+					Table:       table,
 					PrimaryKeys: partitionKey,
 					Distinct:    true,
 					ScrollSize:  3,
@@ -139,7 +145,7 @@ func TestScroll(t *testing.T) {
 			{
 				name: "distinct partitions with a static column",
 				stmt: Statement{
-					Table:       "scroll",
+					Table:       table,
 					PrimaryKeys: partitionKey,
 					Fields:      []cqlbuilder.Marker{cqlbuilder.Column("st")},
 					Distinct:    true,
@@ -150,12 +156,12 @@ func TestScroll(t *testing.T) {
 			{
 				name: "distinct partitions filtered on a partition key column",
 				stmt: Statement{
-					Table:          "scroll",
+					Table:          table,
 					PrimaryKeys:    partitionKey,
 					Distinct:       true,
 					ScrollSize:     3,
-					WhereClause:    cqlbuilder.Eq(cqlbuilder.Column("other")),
-					Values:         map[string]any{"other": 1},
+					WhereClause:    cqlbuilder.Eq(cqlbuilder.Column(otherColumn)),
+					Values:         map[string]any{otherColumn: 1},
 					AllowFiltering: true,
 				},
 				want: allPartitions(func(p partition) bool { return p.Other == 1 }),
@@ -163,7 +169,7 @@ func TestScroll(t *testing.T) {
 			{
 				name: "rows filtered on a clustering column",
 				stmt: Statement{
-					Table:          "scroll",
+					Table:          table,
 					PrimaryKeys:    partitionKey,
 					ScrollSize:     3,
 					WhereClause:    cqlbuilder.StaticEq(cqlbuilder.Column("c"), 1),
@@ -190,7 +196,7 @@ func TestScrollTokenRanges(t *testing.T) {
 					t,
 					db,
 					Statement{
-						Table:       "scroll",
+						Table:       table,
 						PrimaryKeys: partitionKey,
 						Distinct:    true,
 						ScrollSize:  2,
@@ -230,7 +236,7 @@ func scrollRows(t *testing.T, db cql.DB, stmt Statement) []scrolledRow {
 		s  = Scroller{QueryBuilder: cqlbuilder.QueryBuilder{DB: db}}
 	)
 
-	stmt.Table = "scroll"
+	stmt.Table = table
 	stmt.PrimaryKeys = partitionKey
 	stmt.Fields = []cqlbuilder.Marker{cqlbuilder.Column("c")}
 
@@ -238,9 +244,7 @@ func scrollRows(t *testing.T, db cql.DB, stmt Statement) []scrolledRow {
 		context.Background(),
 		stmt,
 		func(sc cqlbuilder.Scanner) error {
-			var r scrolledRow
-
-			err := sc.Scan(map[string]any{"pk": &r.PK, "other": &r.Other, "c": &r.C})
+			r, err := scanRow(sc)
 
 			if err != nil {
 				return err
@@ -277,4 +281,12 @@ func TestScrollRows(t *testing.T) {
 			assert.ElementsMatch(t, allRows(), rs)
 		})
 	})
+}
+
+func scanRow(sc cqlbuilder.Scanner) (scrolledRow, error) {
+	var r scrolledRow
+
+	err := sc.Scan(map[string]any{pkColumn: &r.PK, otherColumn: &r.Other, "c": &r.C})
+
+	return r, err
 }
