@@ -10,12 +10,19 @@ import (
 	"github.com/upfluence/cql/x/cqlbuilder"
 )
 
+// Statement scrolls a table by token. PrimaryKeys are the partition key
+// columns. A page starts after the last token of the previous one: without
+// Distinct, the remaining rows of a partition overlapping two pages are skipped.
 type Statement struct {
 	Table string
 
 	PrimaryKeys []string
 	Fields      []cqlbuilder.Marker
 	Consistency cql.Consistency
+
+	// Distinct scrolls one row per partition, so a partition never overlaps
+	// two pages. Fields must then only contain static columns.
+	Distinct bool
 
 	ScrollSize       int
 	ErrorHandler     func(error) error
@@ -89,6 +96,7 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 		q         = s.QueryBuilder.PrepareSelect(
 			cqlbuilder.SelectStatement{
 				Table:         stmt.Table,
+				Distinct:      stmt.Distinct,
 				SelectClauses: stmt.selectClauses(),
 				WhereClause:   stmt.whereClause(),
 				Limit:         cqlbuilder.NullableInt{Valid: true, Int: stmt.limit()},
