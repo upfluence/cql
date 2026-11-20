@@ -3,6 +3,7 @@ package scroller
 import (
 	"context"
 	"errors"
+	"maps"
 	"math"
 	"strings"
 
@@ -23,6 +24,13 @@ type Statement struct {
 	// Distinct scrolls one row per partition, so a partition never overlaps
 	// two pages. Fields must then only contain static columns.
 	Distinct bool
+
+	// WhereClause is added to the token restriction and Values holds the
+	// values of its markers, the "token" binding is reserved. Restricting
+	// columns outside of the whole partition key requires AllowFiltering.
+	WhereClause    cqlbuilder.PredicateClause
+	Values         map[string]any
+	AllowFiltering bool
 
 	ScrollSize       int
 	ErrorHandler     func(error) error
@@ -46,7 +54,22 @@ func (s *Statement) selectClauses() []cqlbuilder.Marker {
 }
 
 func (s *Statement) whereClause() cqlbuilder.PredicateClause {
-	return cqlbuilder.Gt(s.tokenMarker())
+	var pc = cqlbuilder.Gt(s.tokenMarker())
+
+	if s.WhereClause == nil {
+		return pc
+	}
+
+	return cqlbuilder.And(pc, s.WhereClause)
+}
+
+func (s *Statement) values(token int64) map[string]any {
+	var vs = make(map[string]any, len(s.Values)+1)
+
+	maps.Copy(vs, s.Values)
+	vs["token"] = token
+
+	return vs
 }
 
 func (s *Statement) handleError(err error) error {
@@ -95,12 +118,13 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 		nextToken = int64(math.MinInt64)
 		q         = s.QueryBuilder.PrepareSelect(
 			cqlbuilder.SelectStatement{
-				Table:         stmt.Table,
-				Distinct:      stmt.Distinct,
-				SelectClauses: stmt.selectClauses(),
-				WhereClause:   stmt.whereClause(),
-				Limit:         cqlbuilder.NullableInt{Valid: true, Int: stmt.limit()},
-				Consistency:   stmt.Consistency,
+				Table:          stmt.Table,
+				Distinct:       stmt.Distinct,
+				SelectClauses:  stmt.selectClauses(),
+				WhereClause:    stmt.whereClause(),
+				Limit:          cqlbuilder.NullableInt{Valid: true, Int: stmt.limit()},
+				Consistency:    stmt.Consistency,
+				AllowFiltering: stmt.AllowFiltering,
 			},
 		)
 	)
@@ -110,7 +134,7 @@ func (s *Scroller) Scroll(ctx context.Context, stmt Statement, scanner func(cqlb
 			return err
 		}
 
-		cur := q.Query(ctx, map[string]any{"token": nextToken})
+		cur := q.Query(ctx, stmt.values(nextToken))
 		ok := true
 		hasResult := false
 		pageMaxToken := nextToken

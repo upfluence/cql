@@ -147,6 +147,30 @@ func TestScroll(t *testing.T) {
 				},
 				want: withStatic(allPartitions(func(partition) bool { return true })),
 			},
+			{
+				name: "distinct partitions filtered on a partition key column",
+				stmt: Statement{
+					Table:          "scroll",
+					PrimaryKeys:    partitionKey,
+					Distinct:       true,
+					ScrollSize:     3,
+					WhereClause:    cqlbuilder.Eq(cqlbuilder.Column("other")),
+					Values:         map[string]any{"other": 1},
+					AllowFiltering: true,
+				},
+				want: allPartitions(func(p partition) bool { return p.Other == 1 }),
+			},
+			{
+				name: "rows filtered on a clustering column",
+				stmt: Statement{
+					Table:          "scroll",
+					PrimaryKeys:    partitionKey,
+					ScrollSize:     3,
+					WhereClause:    cqlbuilder.StaticEq(cqlbuilder.Column("c"), 1),
+					AllowFiltering: true,
+				},
+				want: allPartitions(func(partition) bool { return true }),
+			},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
 				assert.ElementsMatch(t, tt.want, scrollPartitions(t, db, tt.stmt))
