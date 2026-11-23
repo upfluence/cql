@@ -30,6 +30,8 @@ github.com/upfluence/errors v0.2.17 h1:fjuWvx31U34U4I6Ugx+JtaqQ/RTTaWbGJXw3bL9JD
 github.com/upfluence/errors v0.2.17/go.mod h1:F20G28/uHKxrcXwrufkVl7iy/SVozr+6w9Xyg5BEx0k=
 github.com/upfluence/log v0.0.6 h1:cG+dq0CXTZTXGknzwZbQEW2QQH6KRjUu9rysdhmhBcA=
 github.com/upfluence/log v0.0.6/go.mod h1:pCbKPbgnoF5zqR9JsTgParTIEBvqXsIuaa8eoEVhdPA=
+github.com/upfluence/stats v0.2.1 h1:T3d7fQsL2rdthYqDTF6rRIXRUKtvM98hGRwNoonuots=
+github.com/upfluence/stats v0.2.1/go.mod h1:68ZOq0AWeoZlgdp9M50Vxbtxl6+HCtsMlAcSEQmSr4Y=
 go.uber.org/multierr v1.10.0 h1:S0h4aNzvfcFsC3dRF1jLoaov7oRaKqRGC/pUEJ2yvPQ=
 go.uber.org/multierr v1.10.0/go.mod h1:20+QtiLqy0Nd6FdQB9TLXag12DsQkrbs3htMFfDN80Y=
 go.uber.org/zap v1.27.0 h1:aJMhYGrd5QSmlpLMr2MftRKl7t8J8PTZPA732ud/XR8=
